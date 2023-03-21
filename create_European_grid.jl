@@ -186,14 +186,16 @@ for i in 1:length(conv_dc_types)
     end
     European_grid["convdc"]["$i"]["rtf"] = conv_dc_dict[:,4][i]
     European_grid["convdc"]["$i"]["rc"] = conv_dc_dict[:,4][i]
-    European_grid["convdc"]["$i"]["xtf"] = conv_dc_dict[:,5][i]
-    European_grid["convdc"]["$i"]["xc"] = conv_dc_dict[:,5][i]
+    European_grid["convdc"]["$i"]["xtf"] = 0.001 #conv_dc_dict[:,5][i]
+    European_grid["convdc"]["$i"]["xc"] = 0.001#conv_dc_dict[:,5][i]
     European_grid["convdc"]["$i"]["bf"] = conv_dc_dict[:,6][i]
     European_grid["convdc"]["$i"]["status"] = 1
     European_grid["convdc"]["$i"]["Pacmax"] = conv_dc_dict[:,7][i]/100 #Adjusting with pu values
     European_grid["convdc"]["$i"]["Pacmin"] = -conv_dc_dict[:,7][i]/100 #Adjusting with pu values
     European_grid["convdc"]["$i"]["Pg"] = 0.0 #Adjusting with pu values
     European_grid["convdc"]["$i"]["ratio"] = conv_dc_dict[:,10][i]
+    European_grid["convdc"]["$i"]["transformer"] = 1
+    European_grid["convdc"]["$i"]["reactor"] = 1
     European_grid["convdc"]["$i"]["source_id"] = []
     push!(European_grid["convdc"]["$i"]["source_id"],"convdc")
     push!(European_grid["convdc"]["$i"]["source_id"],i)
