@@ -24,7 +24,7 @@ using JSON
 #using PlotlyJS
 
 # Uploading an example test system
-test_file = "/Users/giacomobastianel/.julia/packages/PowerModelsACDC/mpvnc/test/data/case5_acdc.m"
+test_file = "case5_acdc.m"
 test_grid = _PM.parse_file(test_file)
 
 # Calling the Excel file
@@ -128,9 +128,9 @@ for i in 1:length(branches_types)
     European_grid["branch"]["$i"]["b_to"] = branches_dict[:,7][i]
     European_grid["branch"]["$i"]["g_fr"] = 0.0
     European_grid["branch"]["$i"]["g_to"] = 0.0
-    European_grid["branch"]["$i"]["rate_a"] = branches_dict[:,8][i]/100 #Adjusting with pu values
-    European_grid["branch"]["$i"]["rate_b"] = branches_dict[:,9][i]/100
-    European_grid["branch"]["$i"]["rate_c"] = branches_dict[:,10][i]/100
+    European_grid["branch"]["$i"]["rate_a"] = branches_dict[:,8][i]/European_grid["baseMVA"]  #Adjusting with pu values
+    European_grid["branch"]["$i"]["rate_b"] = branches_dict[:,9][i]/European_grid["baseMVA"] 
+    European_grid["branch"]["$i"]["rate_c"] = branches_dict[:,10][i]/European_grid["baseMVA"] 
     European_grid["branch"]["$i"]["ratio"] = branches_dict[:,11][i]
     European_grid["branch"]["$i"]["angmin"] = deepcopy(test_grid["branch"]["1"]["angmin"])
     European_grid["branch"]["$i"]["angmax"] = deepcopy(test_grid["branch"]["1"]["angmax"])
@@ -159,9 +159,9 @@ for i in 1:length(branches_dc_types)
     European_grid["branchdc"]["$i"]["c"] = branches_dc_dict[:,6][i]
     European_grid["branchdc"]["$i"]["l"] = branches_dc_dict[:,7][i]
     European_grid["branchdc"]["$i"]["status"] = 1
-    European_grid["branchdc"]["$i"]["rateA"] = branches_dc_dict[:,8][i]/100 #Adjusting with pu values
-    European_grid["branchdc"]["$i"]["rateB"] = branches_dc_dict[:,9][i]/100
-    European_grid["branchdc"]["$i"]["rateC"] = branches_dc_dict[:,10][i]/100
+    European_grid["branchdc"]["$i"]["rateA"] = branches_dc_dict[:,8][i]/European_grid["baseMVA"]  #Adjusting with pu values
+    European_grid["branchdc"]["$i"]["rateB"] = branches_dc_dict[:,9][i]/European_grid["baseMVA"] 
+    European_grid["branchdc"]["$i"]["rateC"] = branches_dc_dict[:,10][i]/European_grid["baseMVA"] 
     European_grid["branchdc"]["$i"]["ratio"] = branches_dc_dict[:,11][i]
     European_grid["branchdc"]["$i"]["source_id"] = []
     push!(European_grid["branchdc"]["$i"]["source_id"],"branchdc")
@@ -190,8 +190,8 @@ for i in 1:length(conv_dc_types)
     European_grid["convdc"]["$i"]["xc"] = 0.001#conv_dc_dict[:,5][i]
     European_grid["convdc"]["$i"]["bf"] = conv_dc_dict[:,6][i]
     European_grid["convdc"]["$i"]["status"] = 1
-    European_grid["convdc"]["$i"]["Pacmax"] = conv_dc_dict[:,7][i]/100 #Adjusting with pu values
-    European_grid["convdc"]["$i"]["Pacmin"] = -conv_dc_dict[:,7][i]/100 #Adjusting with pu values
+    European_grid["convdc"]["$i"]["Pacmax"] = conv_dc_dict[:,7][i]/European_grid["baseMVA"]  #Adjusting with pu values
+    European_grid["convdc"]["$i"]["Pacmin"] = -conv_dc_dict[:,7][i]/European_grid["baseMVA"]  #Adjusting with pu values
     European_grid["convdc"]["$i"]["Pg"] = 0.0 #Adjusting with pu values
     European_grid["convdc"]["$i"]["ratio"] = conv_dc_dict[:,10][i]
     European_grid["convdc"]["$i"]["transformer"] = 1
@@ -211,14 +211,14 @@ for i in 1:length(load_types)
     European_grid["load"]["$i"]["country"] = load_dict[:,1][i]
     European_grid["load"]["$i"]["zone"] = load_dict[:,2][i]
     European_grid["load"]["$i"]["load_bus"] = load_dict[:,3][i]
-    European_grid["load"]["$i"]["pmax"] = load_dict[:,4][i]/100
+    European_grid["load"]["$i"]["pmax"] = load_dict[:,4][i]/European_grid["baseMVA"] 
     if load_dict[:,5][i] == "-"
         European_grid["load"]["$i"]["cosphi"] = 1
     else
         European_grid["load"]["$i"]["cosphi"] = load_dict[:,5][i]
     end
-    European_grid["load"]["$i"]["pd"] = 0.0
-    European_grid["load"]["$i"]["qd"] = 0.0
+    European_grid["load"]["$i"]["pd"] = load_dict[:,4][i]/European_grid["baseMVA"] 
+    European_grid["load"]["$i"]["qd"] = load_dict[:,4][i]/European_grid["baseMVA"]  * sqrt(1 - European_grid["load"]["$i"]["cosphi"]^2)
     European_grid["load"]["$i"]["index"] = i
     European_grid["load"]["$i"]["status"] = 1
     European_grid["load"]["$i"]["source_id"] = []
@@ -234,7 +234,7 @@ load_peak_power = load_peak_dict[:,2]
 for (l_id,l) in European_grid["load"]
     for i in 1:length(load_peak_name)
         if l["zone"] == load_peak_name[i]
-            l["country_peak_load"] = load_peak_power[i]/100
+            l["country_peak_load"] = load_peak_power[i]/European_grid["baseMVA"] 
         end
     end
     l["powerportion"] = l["pmax"]/l["country_peak_load"]
@@ -254,7 +254,7 @@ for i in 1:length(gen_hydro_ror_types)
     European_grid["gen"]["$i"]["zone"] = gen_hydro_ror_dict[:,4][i]
     European_grid["gen"]["$i"]["gen_bus"] = gen_hydro_ror_dict[:,5][i]
     European_grid["gen"]["$i"]["type"] = "Run-of-River"
-    European_grid["gen"]["$i"]["pmax"] = gen_hydro_ror_dict[:,6][i]/100
+    European_grid["gen"]["$i"]["pmax"] = gen_hydro_ror_dict[:,6][i]/European_grid["baseMVA"] 
     European_grid["gen"]["$i"]["pmin"] = 0.0
     European_grid["gen"]["$i"]["qmax"] = 0.0
     European_grid["gen"]["$i"]["qmin"] = 0.0
@@ -275,13 +275,13 @@ l = 0
 for i in (length(gen_hydro_ror_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types))
     European_grid["gen"]["$i"] = Dict{String,Any}()
     European_grid["gen"]["$i"]["index"] = i
-    l += 1
+    global l += 1
     European_grid["gen"]["$i"]["country"] = gen_hydro_res_dict[:,3][l]
     European_grid["gen"]["$i"]["zone"] = gen_hydro_res_dict[:,4][l]
     European_grid["gen"]["$i"]["gen_bus"] = gen_hydro_res_dict[:,5][l]
     European_grid["gen"]["$i"]["type"] = "Reservoir"
-    European_grid["gen"]["$i"]["pmax"] = gen_hydro_res_dict[:,6][l]/100
-    European_grid["gen"]["$i"]["storage"] = gen_hydro_res_dict[:,7][l]/100
+    European_grid["gen"]["$i"]["pmax"] = gen_hydro_res_dict[:,6][l]/European_grid["baseMVA"] 
+    European_grid["gen"]["$i"]["storage"] = gen_hydro_res_dict[:,7][l]/European_grid["baseMVA"] 
     European_grid["gen"]["$i"]["pmin"] = 0.0
     European_grid["gen"]["$i"]["qmax"] = 0.0
     European_grid["gen"]["$i"]["qmin"] = 0.0
@@ -302,7 +302,7 @@ l = 0
 for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types))
     European_grid["gen"]["$i"] = Dict{String,Any}()
     European_grid["gen"]["$i"]["index"] = i
-    l += 1
+    global l += 1
     European_grid["gen"]["$i"]["country"] = gen_conv_dict[:,4][l]
     European_grid["gen"]["$i"]["zone"] = gen_conv_dict[:,5][l]
     European_grid["gen"]["$i"]["gen_bus"] = gen_conv_dict[:,6][l]
@@ -319,7 +319,7 @@ for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+1):(length(gen
     elseif gen_conv_dict[:,3][l] == "Oil"
         European_grid["gen"]["$i"]["type"] = "Heavy oil old 1 Bio"
     end
-    European_grid["gen"]["$i"]["pmax"] = gen_conv_dict[:,7][l]/100
+    European_grid["gen"]["$i"]["pmax"] = gen_conv_dict[:,7][l]/European_grid["baseMVA"] 
     European_grid["gen"]["$i"]["pmin"] = 0.0
     European_grid["gen"]["$i"]["qmax"] = 0.0
     European_grid["gen"]["$i"]["qmin"] = 0.0
@@ -343,12 +343,12 @@ l = 0
 for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types))
     European_grid["gen"]["$i"] = Dict{String,Any}()
     European_grid["gen"]["$i"]["index"] = i
-    l += 1
+    global l += 1
     European_grid["gen"]["$i"]["country"] = gen_onshore_wind_dict[:,3][l]
     European_grid["gen"]["$i"]["zone"] = gen_onshore_wind_dict[:,4][l]
     European_grid["gen"]["$i"]["gen_bus"] = gen_onshore_wind_dict[:,5][l]
     European_grid["gen"]["$i"]["type"] = "Onshore Wind"
-    European_grid["gen"]["$i"]["pmax"] = gen_onshore_wind_dict[:,6][l]/100
+    European_grid["gen"]["$i"]["pmax"] = gen_onshore_wind_dict[:,6][l]/European_grid["baseMVA"] 
     European_grid["gen"]["$i"]["pmin"] = 0.0
     European_grid["gen"]["$i"]["qmax"] = 0.0
     European_grid["gen"]["$i"]["qmin"] = 0.0
@@ -370,12 +370,12 @@ l = 0
 for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types)+length(gen_offshore_wind_types))
     European_grid["gen"]["$i"] = Dict{String,Any}()
     European_grid["gen"]["$i"]["index"] = i
-    l += 1
+    global l += 1
     European_grid["gen"]["$i"]["country"] = gen_offshore_wind_dict[:,3][l]
     European_grid["gen"]["$i"]["zone"] = gen_offshore_wind_dict[:,4][l]
     European_grid["gen"]["$i"]["gen_bus"] = gen_offshore_wind_dict[:,5][l]
     European_grid["gen"]["$i"]["type"] = "Offshore Wind"
-    European_grid["gen"]["$i"]["pmax"] = gen_offshore_wind_dict[:,6][l]/100
+    European_grid["gen"]["$i"]["pmax"] = gen_offshore_wind_dict[:,6][l]/European_grid["baseMVA"] 
     European_grid["gen"]["$i"]["pmin"] = 0.0
     European_grid["gen"]["$i"]["qmax"] = 0.0
     European_grid["gen"]["$i"]["qmin"] = 0.0
@@ -397,12 +397,12 @@ l = 0
 for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types)+length(gen_offshore_wind_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types)+length(gen_offshore_wind_types)+length(gen_solar_types))
     European_grid["gen"]["$i"] = Dict{String,Any}()
     European_grid["gen"]["$i"]["index"] = i
-    l += 1
+    global l += 1
     European_grid["gen"]["$i"]["country"] = gen_solar_dict[:,3][l]
     European_grid["gen"]["$i"]["zone"] = gen_solar_dict[:,4][l]
     European_grid["gen"]["$i"]["gen_bus"] = gen_solar_dict[:,5][l]
     European_grid["gen"]["$i"]["type"] = "Solar PV"
-    European_grid["gen"]["$i"]["pmax"] = gen_solar_dict[:,6][l]/100
+    European_grid["gen"]["$i"]["pmax"] = gen_solar_dict[:,6][l]/European_grid["baseMVA"] 
     European_grid["gen"]["$i"]["pmin"] = 0.0
     European_grid["gen"]["$i"]["qmax"] = 0.0
     European_grid["gen"]["$i"]["qmin"] = 0.0
@@ -416,6 +416,37 @@ for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_con
     push!(European_grid["gen"]["$i"]["source_id"],i)
 end
 
+#######
+zone_names = xf["BUS_OVERVIEW"]["F2:F43"]
+European_grid["zonal_generation_capacity"] = Dict{String, Any}()
+European_grid["zonal_peak_demand"] = Dict{String, Any}()
+
+for zone in zone_names
+    idx = findfirst(zone .== zone_names)
+    # Generation
+    European_grid["zonal_generation_capacity"][zone] = Dict{String, Any}()
+        # Wind
+        European_grid["zonal_generation_capacity"][zone]["Onshore Wind"] =  xf["WIND_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["Offshore Wind"] =  xf["WIND_OVERVIEW"]["C2:C43"][idx]/European_grid["baseMVA"]
+        # PV
+        European_grid["zonal_generation_capacity"][zone]["Solar PV"] =  xf["SOLAR_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+        # Hydro
+        European_grid["zonal_generation_capacity"][zone]["Run-of-River"] =  xf["HYDRO_OVERVIEW"]["B3:B44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["Reservoir"] =  xf["HYDRO_OVERVIEW"]["C3:C44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["Reservoir capacity"] =  xf["HYDRO_OVERVIEW"]["D3:D44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["PHS"] =  xf["HYDRO_OVERVIEW"]["E3:E44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["PHS capacity"] =  xf["HYDRO_OVERVIEW"]["F3:F44"][idx]/European_grid["baseMVA"]
+        # Thermal
+        European_grid["zonal_generation_capacity"][zone]["Biomass"] =  xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["Gas CCGT new"] =  xf["THERMAL_OVERVIEW"]["C2:C43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["Hard coal old 2 Bio"] =  xf["THERMAL_OVERVIEW"]["D2:D43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["Lignite old 1"] =  xf["THERMAL_OVERVIEW"]["E2:E43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["Nuclear"] =  xf["THERMAL_OVERVIEW"]["F2:F43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"][zone]["Heavy oil old 1 Bio"] =  xf["THERMAL_OVERVIEW"]["G2:G43"][idx]/European_grid["baseMVA"]
+    # Demand
+    European_grid["zonal_peak_demand"][zone] = xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+end
+######
 European_grid["source_type"] = deepcopy(test_grid["source_type"])
 European_grid["switch"] = deepcopy(test_grid["switch"])
 European_grid["storage"] = deepcopy(test_grid["storage"])
@@ -429,12 +460,8 @@ European_grid["branch"]["8439"]["br_r"] = 0.001
 European_grid["branch"]["8340"]["br_r"] = 0.001
 
 
+
 string_data = JSON.json(European_grid)
 open(joinpath(@__DIR__,"European_grid.json"),"w" ) do f
     write(f,string_data)
 end
-
-test_grid["gen"]["1"]["status"]
-test_grid["convdc"]["1"]["status"]
-European_grid["convdc"]["1"]["status"]
-European_grid["load"]["1"]["status"]

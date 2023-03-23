@@ -15,6 +15,11 @@ _PMACDC.process_additional_data!(test_grid)
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 test_result = _PMACDC.run_acdcopf(test_grid, DCPPowerModel, Gurobi.Optimizer; setting = s)
 
+for (l, load) in EU_grid["load"]
+    load["pd"] = load["pmax"]
+    load["qd"] = load["pd"] / load["cosphi"] * sqrt(1 - load["cosphi"]^2)
+end
+
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 result = _PMACDC.run_acdcopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s)
 
