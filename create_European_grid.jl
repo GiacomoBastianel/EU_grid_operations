@@ -241,6 +241,17 @@ for (l_id,l) in European_grid["load"]
 end
 
 
+# ToDo:
+# Fix the reading in of the generators, to avoid strange things happeing with indexes:
+#### Step1: read in all convertional generator using the "GEN" sheetnames
+#### Step2: add one by one all RES, e.g. "ONSHORE", "OFFSHORE", "SOLAR", "PHS", .....
+
+
+
+
+
+
+
 # Generators to be added -> GEN conventional
 # RES on the side
 gen_hydro_ror_dict = xf["ROR"]["A2:F650"]
