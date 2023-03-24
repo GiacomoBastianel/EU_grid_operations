@@ -246,185 +246,184 @@ end
 #### Step1: read in all convertional generator using the "GEN" sheetnames
 #### Step2: add one by one all RES, e.g. "ONSHORE", "OFFSHORE", "SOLAR", "PHS", .....
 
+European_grid["gen"] = Dict{String,Any}()
+gen_idx = xf["GEN"]["C2:C1230"] # to do, make length dynamic eventually....
+for idx in 1:length(gen_idx)
+    European_grid["gen"]["$idx"] = Dict{String,Any}()
+    European_grid["gen"]["$idx"]["index"] = idx
+    European_grid["gen"]["$idx"]["country"] = xf["GEN"]["D2:D1230"][idx]
+    European_grid["gen"]["$idx"]["zone"] = xf["GEN"]["E2:E1230"][idx]
+    European_grid["gen"]["$idx"]["gen_bus"] = xf["GEN"]["F2:F1230"][idx]
+    European_grid["gen"]["$idx"]["pmax"] = xf["GEN"]["H2:H1230"][idx]/European_grid["baseMVA"] 
+    European_grid["gen"]["$idx"]["pmin"] = xf["GEN"]["G2:G1230"][idx]/European_grid["baseMVA"] 
+    European_grid["gen"]["$idx"]["qmax"] = 0.0
+    European_grid["gen"]["$idx"]["qmin"] = 0.0
+    European_grid["gen"]["$idx"]["cost"] = [xf["GEN"]["M2:M1230"][idx] * European_grid["baseMVA"], 0.0]  # Assumption here, to be checked
+    European_grid["gen"]["$idx"]["marginal_cost"] = xf["GEN"]["K2:K1230"][idx] * European_grid["baseMVA"]  # Assumption here, to be checked
+    European_grid["gen"]["$idx"]["co2_add_on"] = xf["GEN"]["L2:L1230"][idx] * European_grid["baseMVA"]  # Assumption here, to be checked
+    European_grid["gen"]["$idx"]["ncost"] = 2
+    European_grid["gen"]["$idx"]["model"] = 2
+    European_grid["gen"]["$idx"]["gen_status"] = 1
+    European_grid["gen"]["$idx"]["vg"] = 1.0
+    European_grid["gen"]["$idx"]["source_id"] = []
+    European_grid["gen"]["$idx"]["name"] = xf["GEN"]["A2:A1230"][idx]  # Assumption here, to be checked
+    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+    push!(European_grid["gen"]["$idx"]["source_id"], idx)
 
+    type = xf["GEN"]["B2:B1230"][idx]
+    if type == "Gas"
+        type_tyndp = "Gas CCGT new"
+    elseif type == "Oil"
+        type_tyndp = "Heavy oil old 1 Bio"
+    elseif type == "Nuclear"
+        type_tyndp = "Nuclear"
+    elseif type == "Biomass"
+        type_tyndp = "Other RES"
+    elseif type == "Hard Coal"
+        type_tyndp = "Hard coal old 2 Bio"
+    elseif type == "Lignite"
+        type_tyndp = "Lignite old 1"
+    end
+    European_grid["gen"]["$idx"]["type"] = type
+    European_grid["gen"]["$idx"]["type_tyndp"] = type_tyndp
+end
 
-
-
-
-
-# Generators to be added -> GEN conventional
-# RES on the side
+# Run-off-river
 gen_hydro_ror_dict = xf["ROR"]["A2:F650"]
 gen_hydro_ror_types = gen_hydro_ror_dict[:,2]
-
-European_grid["gen"] = Dict{String,Any}()
+number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
 for i in 1:length(gen_hydro_ror_types)
-    European_grid["gen"]["$i"] = Dict{String,Any}()
-    European_grid["gen"]["$i"]["index"] = gen_hydro_ror_dict[:,2][i]
-    European_grid["gen"]["$i"]["country"] = gen_hydro_ror_dict[:,3][i]
-    European_grid["gen"]["$i"]["zone"] = gen_hydro_ror_dict[:,4][i]
-    European_grid["gen"]["$i"]["gen_bus"] = gen_hydro_ror_dict[:,5][i]
-    European_grid["gen"]["$i"]["type"] = "Run-of-River"
-    European_grid["gen"]["$i"]["pmax"] = gen_hydro_ror_dict[:,6][i]/European_grid["baseMVA"] 
-    European_grid["gen"]["$i"]["pmin"] = 0.0
-    European_grid["gen"]["$i"]["qmax"] = 0.0
-    European_grid["gen"]["$i"]["qmin"] = 0.0
-    European_grid["gen"]["$i"]["cost"] = [60.0,0.0] # Assumption here, to be checked
-    European_grid["gen"]["$i"]["ncost"] = 2
-    European_grid["gen"]["$i"]["model"] = 2
-    European_grid["gen"]["$i"]["gen_status"] = 1
-    European_grid["gen"]["$i"]["vg"] = 1.0
-    European_grid["gen"]["$i"]["source_id"] = []
-    push!(European_grid["gen"]["$i"]["source_id"],"gen")
-    push!(European_grid["gen"]["$i"]["source_id"],i)
+    idx = number_of_gens + i
+    European_grid["gen"]["$idx"] = Dict{String,Any}()
+    European_grid["gen"]["$idx"]["index"] = idx #gen_hydro_ror_dict[:,2][i]
+    European_grid["gen"]["$idx"]["country"] = gen_hydro_ror_dict[:,3][i]
+    European_grid["gen"]["$idx"]["zone"] = gen_hydro_ror_dict[:,4][i]
+    European_grid["gen"]["$idx"]["gen_bus"] = gen_hydro_ror_dict[:,5][i]
+    European_grid["gen"]["$idx"]["type"] = gen_hydro_ror_dict[:,1][i]
+    European_grid["gen"]["$idx"]["type_tyndp"] = "Run-of-River"
+    European_grid["gen"]["$idx"]["pmax"] = gen_hydro_ror_dict[:,6][i]/European_grid["baseMVA"] 
+    European_grid["gen"]["$idx"]["pmin"] = 0.0
+    European_grid["gen"]["$idx"]["qmax"] = 0.0
+    European_grid["gen"]["$idx"]["qmin"] = 0.0
+    European_grid["gen"]["$idx"]["cost"] = [60.0,0.0] # Assumption here, to be checked
+    European_grid["gen"]["$idx"]["ncost"] = 2
+    European_grid["gen"]["$idx"]["model"] = 2
+    European_grid["gen"]["$idx"]["gen_status"] = 1
+    European_grid["gen"]["$idx"]["vg"] = 1.0
+    European_grid["gen"]["$idx"]["source_id"] = []
+    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+    push!(European_grid["gen"]["$idx"]["source_id"], idx)
 end
 
-gen_hydro_res_dict = xf["RES"]["A2:H401"]
-gen_hydro_res_types = gen_hydro_res_dict[:,2]
-
-l = 0
-for i in (length(gen_hydro_ror_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types))
-    European_grid["gen"]["$i"] = Dict{String,Any}()
-    European_grid["gen"]["$i"]["index"] = i
-    global l += 1
-    European_grid["gen"]["$i"]["country"] = gen_hydro_res_dict[:,3][l]
-    European_grid["gen"]["$i"]["zone"] = gen_hydro_res_dict[:,4][l]
-    European_grid["gen"]["$i"]["gen_bus"] = gen_hydro_res_dict[:,5][l]
-    European_grid["gen"]["$i"]["type"] = "Reservoir"
-    European_grid["gen"]["$i"]["pmax"] = gen_hydro_res_dict[:,6][l]/European_grid["baseMVA"] 
-    European_grid["gen"]["$i"]["storage"] = gen_hydro_res_dict[:,7][l]/European_grid["baseMVA"] 
-    European_grid["gen"]["$i"]["pmin"] = 0.0
-    European_grid["gen"]["$i"]["qmax"] = 0.0
-    European_grid["gen"]["$i"]["qmin"] = 0.0
-    European_grid["gen"]["$i"]["cost"] = [65.0,0.0] # Assumption here, to be checked
-    European_grid["gen"]["$i"]["ncost"] = 2
-    European_grid["gen"]["$i"]["model"] = 2
-    European_grid["gen"]["$i"]["gen_status"] = 1
-    European_grid["gen"]["$i"]["vg"] = 1.0
-    European_grid["gen"]["$i"]["source_id"] = []
-    push!(European_grid["gen"]["$i"]["source_id"],"gen")
-    push!(European_grid["gen"]["$i"]["source_id"],i)
-end
-
-gen_conv_dict = xf["GEN"]["A2:M1230"]
-gen_conv_types = gen_conv_dict[:,2]
-
-l = 0
-for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types))
-    European_grid["gen"]["$i"] = Dict{String,Any}()
-    European_grid["gen"]["$i"]["index"] = i
-    global l += 1
-    European_grid["gen"]["$i"]["country"] = gen_conv_dict[:,4][l]
-    European_grid["gen"]["$i"]["zone"] = gen_conv_dict[:,5][l]
-    European_grid["gen"]["$i"]["gen_bus"] = gen_conv_dict[:,6][l]
-    if gen_conv_dict[:,3][l] == "Biomass"
-        European_grid["gen"]["$i"]["type"] = "Lignite old 1 Bio"
-    elseif gen_conv_dict[:,3][l] == "Gas"
-        European_grid["gen"]["$i"]["type"] = "Gas CCGT new"
-    elseif gen_conv_dict[:,3][l] == "Hard Coal"
-        European_grid["gen"]["$i"]["type"] = "Hard coal old 2 Bio"
-    elseif gen_conv_dict[:,3][l] == "Lignite"
-        European_grid["gen"]["$i"]["type"] = "Lignite old 1"
-    elseif gen_conv_dict[:,3][l] == "Nuclear"
-        European_grid["gen"]["$i"]["type"] = "Nuclear"
-    elseif gen_conv_dict[:,3][l] == "Oil"
-        European_grid["gen"]["$i"]["type"] = "Heavy oil old 1 Bio"
-    end
-    European_grid["gen"]["$i"]["pmax"] = gen_conv_dict[:,7][l]/European_grid["baseMVA"] 
-    European_grid["gen"]["$i"]["pmin"] = 0.0
-    European_grid["gen"]["$i"]["qmax"] = 0.0
-    European_grid["gen"]["$i"]["qmin"] = 0.0
-    European_grid["gen"]["$i"]["cost"] = [gen_conv_dict[:,12][l],0.0] # Without CO2
-    European_grid["gen"]["$i"]["marginal_cost"] = gen_conv_dict[:,10][l]
-    European_grid["gen"]["$i"]["CO2_cost"] = gen_conv_dict[:,11][l]
-    European_grid["gen"]["$i"]["ncost"] = 2
-    European_grid["gen"]["$i"]["model"] = 2
-    European_grid["gen"]["$i"]["gen_status"] = 1
-    European_grid["gen"]["$i"]["vg"] = 1.0
-    European_grid["gen"]["$i"]["source_id"] = []
-    push!(European_grid["gen"]["$i"]["source_id"],"gen")
-    push!(European_grid["gen"]["$i"]["source_id"],i)
-end
-
-
+##### ONSHORE WIND
 gen_onshore_wind_dict = xf["ONSHORE"]["A2:F2044"]
 gen_onshore_wind_types = gen_onshore_wind_dict[:,2]
-
-l = 0
-for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types))
-    European_grid["gen"]["$i"] = Dict{String,Any}()
-    European_grid["gen"]["$i"]["index"] = i
-    global l += 1
-    European_grid["gen"]["$i"]["country"] = gen_onshore_wind_dict[:,3][l]
-    European_grid["gen"]["$i"]["zone"] = gen_onshore_wind_dict[:,4][l]
-    European_grid["gen"]["$i"]["gen_bus"] = gen_onshore_wind_dict[:,5][l]
-    European_grid["gen"]["$i"]["type"] = "Onshore Wind"
-    European_grid["gen"]["$i"]["pmax"] = gen_onshore_wind_dict[:,6][l]/European_grid["baseMVA"] 
-    European_grid["gen"]["$i"]["pmin"] = 0.0
-    European_grid["gen"]["$i"]["qmax"] = 0.0
-    European_grid["gen"]["$i"]["qmin"] = 0.0
-    European_grid["gen"]["$i"]["cost"] = [25.0,0.0] 
-    European_grid["gen"]["$i"]["ncost"] = 2
-    European_grid["gen"]["$i"]["model"] = 2
-    European_grid["gen"]["$i"]["gen_status"] = 1
-    European_grid["gen"]["$i"]["vg"] = 1.0
-    European_grid["gen"]["$i"]["source_id"] = []
-    push!(European_grid["gen"]["$i"]["source_id"],"gen")
-    push!(European_grid["gen"]["$i"]["source_id"],i)
+number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
+for i in 1:length(gen_onshore_wind_types)
+    idx = number_of_gens + i
+    European_grid["gen"]["$idx"] = Dict{String,Any}()
+    European_grid["gen"]["$idx"]["index"] = idx
+    European_grid["gen"]["$idx"]["country"] = gen_onshore_wind_dict[:,3][i]
+    European_grid["gen"]["$idx"]["zone"] = gen_onshore_wind_dict[:,4][i]
+    European_grid["gen"]["$idx"]["gen_bus"] = gen_onshore_wind_dict[:,5][i]
+    European_grid["gen"]["$idx"]["type"] = gen_onshore_wind_dict[:,1][i]
+    European_grid["gen"]["$idx"]["type_tyndp"] = "Onshore Wind"
+    European_grid["gen"]["$idx"]["pmax"] = gen_onshore_wind_dict[:,6][i]/European_grid["baseMVA"] 
+    European_grid["gen"]["$idx"]["pmin"] = 0.0
+    European_grid["gen"]["$idx"]["qmax"] = 0.0
+    European_grid["gen"]["$idx"]["qmin"] = 0.0
+    European_grid["gen"]["$idx"]["cost"] = [25.0,0.0] 
+    European_grid["gen"]["$idx"]["ncost"] = 2
+    European_grid["gen"]["$idx"]["model"] = 2
+    European_grid["gen"]["$idx"]["gen_status"] = 1
+    European_grid["gen"]["$idx"]["vg"] = 1.0
+    European_grid["gen"]["$idx"]["source_id"] = []
+    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+    push!(European_grid["gen"]["$idx"]["source_id"], idx)
 end
 
-
+####### OFFSHORE WIND
 gen_offshore_wind_dict = xf["OFFSHORE"]["A2:F131"]
 gen_offshore_wind_types = gen_offshore_wind_dict[:,2]
+number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
+for i in 1:length(gen_offshore_wind_types)
+    idx = number_of_gens + i
+    European_grid["gen"]["$idx"] = Dict{String,Any}()
+    European_grid["gen"]["$idx"]["index"] = idx
+    European_grid["gen"]["$idx"]["country"] = gen_offshore_wind_dict[:,3][i]
+    European_grid["gen"]["$idx"]["zone"] = gen_offshore_wind_dict[:,4][i]
+    European_grid["gen"]["$idx"]["gen_bus"] = gen_offshore_wind_dict[:,5][i]
+    European_grid["gen"]["$idx"]["type"] = gen_offshore_wind_dict[:,1][i]
+    European_grid["gen"]["$idx"]["type_tyndp"] = "Offshore Wind"
+    European_grid["gen"]["$idx"]["pmax"] = gen_offshore_wind_dict[:,6][i]/European_grid["baseMVA"] 
+    European_grid["gen"]["$idx"]["pmin"] = 0.0
+    European_grid["gen"]["$idx"]["qmax"] = 0.0
+    European_grid["gen"]["$idx"]["qmin"] = 0.0
+    European_grid["gen"]["$idx"]["cost"] = [59.0,0.0] 
+    European_grid["gen"]["$idx"]["ncost"] = 2
+    European_grid["gen"]["$idx"]["model"] = 2
+    European_grid["gen"]["$idx"]["gen_status"] = 1
+    European_grid["gen"]["$idx"]["vg"] = 1.0
+    European_grid["gen"]["$idx"]["source_id"] = []
+    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+    push!(European_grid["gen"]["$idx"]["source_id"], idx)
+end
 
-l = 0
-for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types)+length(gen_offshore_wind_types))
-    European_grid["gen"]["$i"] = Dict{String,Any}()
-    European_grid["gen"]["$i"]["index"] = i
-    global l += 1
-    European_grid["gen"]["$i"]["country"] = gen_offshore_wind_dict[:,3][l]
-    European_grid["gen"]["$i"]["zone"] = gen_offshore_wind_dict[:,4][l]
-    European_grid["gen"]["$i"]["gen_bus"] = gen_offshore_wind_dict[:,5][l]
-    European_grid["gen"]["$i"]["type"] = "Offshore Wind"
-    European_grid["gen"]["$i"]["pmax"] = gen_offshore_wind_dict[:,6][l]/European_grid["baseMVA"] 
-    European_grid["gen"]["$i"]["pmin"] = 0.0
-    European_grid["gen"]["$i"]["qmax"] = 0.0
-    European_grid["gen"]["$i"]["qmin"] = 0.0
-    European_grid["gen"]["$i"]["cost"] = [59.0,0.0] 
-    European_grid["gen"]["$i"]["ncost"] = 2
-    European_grid["gen"]["$i"]["model"] = 2
-    European_grid["gen"]["$i"]["gen_status"] = 1
-    European_grid["gen"]["$i"]["vg"] = 1.0
-    European_grid["gen"]["$i"]["source_id"] = []
-    push!(European_grid["gen"]["$i"]["source_id"],"gen")
-    push!(European_grid["gen"]["$i"]["source_id"],i)
+##### SOLAR PV
+gen_solar_dict = xf["SOLAR"]["A2:F3195"]
+gen_solar_types = gen_solar_dict[:,2]
+number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
+for i in 1:length(gen_solar_types)
+    idx = number_of_gens + i
+    European_grid["gen"]["$idx"] = Dict{String,Any}()
+    European_grid["gen"]["$idx"]["index"] = idx
+    European_grid["gen"]["$idx"]["country"] = gen_solar_dict[:,3][i]
+    European_grid["gen"]["$idx"]["zone"] = gen_solar_dict[:,4][i]
+    European_grid["gen"]["$idx"]["gen_bus"] = gen_solar_dict[:,5][i]
+    European_grid["gen"]["$idx"]["type"] = gen_solar_dict[:,1][i]
+    European_grid["gen"]["$idx"]["type_tyndp"] = "Solar PV"
+    European_grid["gen"]["$idx"]["pmax"] = gen_solar_dict[:,6][i]/European_grid["baseMVA"] 
+    European_grid["gen"]["$idx"]["pmin"] = 0.0
+    European_grid["gen"]["$idx"]["qmax"] = 0.0
+    European_grid["gen"]["$idx"]["qmin"] = 0.0
+    European_grid["gen"]["$idx"]["cost"] = [18.0,0.0] 
+    European_grid["gen"]["$idx"]["ncost"] = 2
+    European_grid["gen"]["$idx"]["model"] = 2
+    European_grid["gen"]["$idx"]["gen_status"] = 1
+    European_grid["gen"]["$idx"]["vg"] = 1.0
+    European_grid["gen"]["$idx"]["source_id"] = []
+    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+    push!(European_grid["gen"]["$idx"]["source_id"], idx)
 end
 
 
-gen_solar_dict = xf["SOLAR"]["A2:F3195"]
-gen_solar_types = gen_solar_dict[:,2]
-
-l = 0
-for i in (length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types)+length(gen_offshore_wind_types)+1):(length(gen_hydro_ror_types)+length(gen_hydro_res_types)+length(gen_conv_types)+length(gen_onshore_wind_types)+length(gen_offshore_wind_types)+length(gen_solar_types))
-    European_grid["gen"]["$i"] = Dict{String,Any}()
-    European_grid["gen"]["$i"]["index"] = i
-    global l += 1
-    European_grid["gen"]["$i"]["country"] = gen_solar_dict[:,3][l]
-    European_grid["gen"]["$i"]["zone"] = gen_solar_dict[:,4][l]
-    European_grid["gen"]["$i"]["gen_bus"] = gen_solar_dict[:,5][l]
-    European_grid["gen"]["$i"]["type"] = "Solar PV"
-    European_grid["gen"]["$i"]["pmax"] = gen_solar_dict[:,6][l]/European_grid["baseMVA"] 
-    European_grid["gen"]["$i"]["pmin"] = 0.0
-    European_grid["gen"]["$i"]["qmax"] = 0.0
-    European_grid["gen"]["$i"]["qmin"] = 0.0
-    European_grid["gen"]["$i"]["cost"] = [18.0,0.0] 
-    European_grid["gen"]["$i"]["ncost"] = 2
-    European_grid["gen"]["$i"]["model"] = 2
-    European_grid["gen"]["$i"]["gen_status"] = 1
-    European_grid["gen"]["$i"]["vg"] = 1.0
-    European_grid["gen"]["$i"]["source_id"] = []
-    push!(European_grid["gen"]["$i"]["source_id"],"gen")
-    push!(European_grid["gen"]["$i"]["source_id"],i)
+# ####### Reservoir & PHS as storage
+# hydro reservoir -> convert to storage later
+gen_hydro_res_dict = xf["RES"]["A2:H401"]
+gen_hydro_res_types = gen_hydro_res_dict[:,2]
+number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
+for i in 1:length(gen_hydro_res_types)
+    idx = number_of_gens + i  
+    European_grid["gen"]["$idx"] = Dict{String,Any}()
+    European_grid["gen"]["$idx"]["index"] = idx
+    European_grid["gen"]["$idx"]["country"] = gen_hydro_res_dict[:,3][i]
+    European_grid["gen"]["$idx"]["zone"] = gen_hydro_res_dict[:,4][i]
+    European_grid["gen"]["$idx"]["gen_bus"] = gen_hydro_res_dict[:,5][i]
+    European_grid["gen"]["$idx"]["type"] = gen_hydro_res_dict[:,1][i]
+    European_grid["gen"]["$idx"]["type_tyndp"] = "Reservoir"
+    European_grid["gen"]["$idx"]["pmax"] = gen_hydro_res_dict[:,6][i]/European_grid["baseMVA"] 
+    European_grid["gen"]["$idx"]["capacity"] = gen_hydro_res_dict[:,7][i]/European_grid["baseMVA"] 
+    European_grid["gen"]["$idx"]["pmin"] = 0.0
+    European_grid["gen"]["$idx"]["qmax"] = 0.0
+    European_grid["gen"]["$idx"]["qmin"] = 0.0
+    European_grid["gen"]["$idx"]["cost"] = [gen_hydro_res_dict[:,7][i] * European_grid["baseMVA"] ,0.0] # Assumption here, to be checked
+    European_grid["gen"]["$idx"]["ncost"] = 2
+    European_grid["gen"]["$idx"]["model"] = 2
+    European_grid["gen"]["$idx"]["gen_status"] = 1
+    European_grid["gen"]["$idx"]["vg"] = 1.0
+    European_grid["gen"]["$idx"]["source_id"] = []
+    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+    push!(European_grid["gen"]["$idx"]["source_id"], idx)
 end
 
 #######
@@ -433,29 +432,30 @@ European_grid["zonal_generation_capacity"] = Dict{String, Any}()
 European_grid["zonal_peak_demand"] = Dict{String, Any}()
 
 for zone in zone_names
-    idx = findfirst(zone .== zone_names)
+    idx = findfirst(zone .== zone_names)[1]
     # Generation
-    European_grid["zonal_generation_capacity"][zone] = Dict{String, Any}()
+    European_grid["zonal_generation_capacity"]["$idx"] = Dict{String, Any}()
+    European_grid["zonal_generation_capacity"]["$idx"]["zone"] = zone
         # Wind
-        European_grid["zonal_generation_capacity"][zone]["Onshore Wind"] =  xf["WIND_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["Offshore Wind"] =  xf["WIND_OVERVIEW"]["C2:C43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Onshore Wind"] =  xf["WIND_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Offshore Wind"] =  xf["WIND_OVERVIEW"]["C2:C43"][idx]/European_grid["baseMVA"]
         # PV
-        European_grid["zonal_generation_capacity"][zone]["Solar PV"] =  xf["SOLAR_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Solar PV"] =  xf["SOLAR_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
         # Hydro
-        European_grid["zonal_generation_capacity"][zone]["Run-of-River"] =  xf["HYDRO_OVERVIEW"]["B3:B44"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["Reservoir"] =  xf["HYDRO_OVERVIEW"]["C3:C44"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["Reservoir capacity"] =  xf["HYDRO_OVERVIEW"]["D3:D44"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["PHS"] =  xf["HYDRO_OVERVIEW"]["E3:E44"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["PHS capacity"] =  xf["HYDRO_OVERVIEW"]["F3:F44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Run-of-River"] =  xf["HYDRO_OVERVIEW"]["B3:B44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Reservoir"] =  xf["HYDRO_OVERVIEW"]["C3:C44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Reservoir capacity"] =  xf["HYDRO_OVERVIEW"]["D3:D44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["PHS"] =  xf["HYDRO_OVERVIEW"]["E3:E44"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["PHS capacity"] =  xf["HYDRO_OVERVIEW"]["F3:F44"][idx]/European_grid["baseMVA"]
         # Thermal
-        European_grid["zonal_generation_capacity"][zone]["Biomass"] =  xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["Gas CCGT new"] =  xf["THERMAL_OVERVIEW"]["C2:C43"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["Hard coal old 2 Bio"] =  xf["THERMAL_OVERVIEW"]["D2:D43"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["Lignite old 1"] =  xf["THERMAL_OVERVIEW"]["E2:E43"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["Nuclear"] =  xf["THERMAL_OVERVIEW"]["F2:F43"][idx]/European_grid["baseMVA"]
-        European_grid["zonal_generation_capacity"][zone]["Heavy oil old 1 Bio"] =  xf["THERMAL_OVERVIEW"]["G2:G43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Other RES"] =  xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Gas CCGT new"] =  xf["THERMAL_OVERVIEW"]["C2:C43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Hard coal old 2 Bio"] =  xf["THERMAL_OVERVIEW"]["D2:D43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Lignite old 1"] =  xf["THERMAL_OVERVIEW"]["E2:E43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Nuclear"] =  xf["THERMAL_OVERVIEW"]["F2:F43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_generation_capacity"]["$idx"]["Heavy oil old 1 Bio"] =  xf["THERMAL_OVERVIEW"]["G2:G43"][idx]/European_grid["baseMVA"]
     # Demand
-    European_grid["zonal_peak_demand"][zone] = xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+    European_grid["zonal_peak_demand"]["$idx"] = xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
 end
 ######
 European_grid["source_type"] = deepcopy(test_grid["source_type"])

@@ -23,3 +23,4 @@ end
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true)
 result = _PMACDC.run_acdcopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s)
 
+result = _PM.solve_opf(EU_grid, DCPPowerModel, Gurobi.Optimizer)
