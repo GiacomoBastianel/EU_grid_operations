@@ -39,394 +39,447 @@ European_grid["baseMVA"] = 100
 European_grid["per_unit"] = true
 
 # Buses
-buses_dict = xf["BUS"]["A2:Q6127"]
-buses_names = buses_dict[:,1]
-
 European_grid["bus"] = Dict{String,Any}()
-for i in 1:length(buses_names)
-    European_grid["bus"]["$i"] = Dict{String,Any}()
-    European_grid["bus"]["$i"]["name"] = buses_dict[:,1][i]
-    European_grid["bus"]["$i"]["index"] = i
-    European_grid["bus"]["$i"]["bus_i"] = buses_dict[:,2][i]
-    European_grid["bus"]["$i"]["bus_type"] = buses_dict[:,3][i]
-    European_grid["bus"]["$i"]["pd"] = buses_dict[:,4][i]
-    European_grid["bus"]["$i"]["qd"] = buses_dict[:,5][i]
-    European_grid["bus"]["$i"]["gs"] = buses_dict[:,6][i]
-    European_grid["bus"]["$i"]["bs"] = buses_dict[:,7][i]
-    European_grid["bus"]["$i"]["area"] = buses_dict[:,8][i]
-    European_grid["bus"]["$i"]["vm"] = buses_dict[:,9][i]
-    European_grid["bus"]["$i"]["va"] = buses_dict[:,10][i]
-    European_grid["bus"]["$i"]["base_kv"] = buses_dict[:,11][i]
-    European_grid["bus"]["$i"]["zone"] = buses_dict[:,12][i]
-    European_grid["bus"]["$i"]["vmax"] = buses_dict[:,13][i]
-    European_grid["bus"]["$i"]["vmin"] = buses_dict[:,14][i]
-    European_grid["bus"]["$i"]["lat"] = buses_dict[:,16][i]
-    European_grid["bus"]["$i"]["lon"] = buses_dict[:,17][i]
-    European_grid["bus"]["$i"]["source_id"] = []
-    push!(European_grid["bus"]["$i"]["source_id"],"bus")
-    push!(European_grid["bus"]["$i"]["source_id"],i)
+for r in XLSX.eachrow(xf["BUS"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = i - 1
+        European_grid["bus"]["$idx"] = Dict{String,Any}()
+        European_grid["bus"]["$idx"]["name"] = r[1] #buses_dict[:,1][i]
+        European_grid["bus"]["$idx"]["index"] = r[2] #i
+        European_grid["bus"]["$idx"]["bus_i"] = r[2] #buses_dict[:,2][i]
+        European_grid["bus"]["$idx"]["bus_type"] = r[3] #buses_dict[:,3][i]
+        European_grid["bus"]["$idx"]["pd"] = r[4] #buses_dict[:,4][i]
+        European_grid["bus"]["$idx"]["qd"] = r[5] #buses_dict[:,5][i]
+        European_grid["bus"]["$idx"]["gs"] = r[6] #buses_dict[:,6][i]
+        European_grid["bus"]["$idx"]["bs"] = r[7] #buses_dict[:,7][i]
+        European_grid["bus"]["$idx"]["area"] = r[8] #buses_dict[:,8][i]
+        European_grid["bus"]["$idx"]["vm"] = r[9] #buses_dict[:,9][i]
+        European_grid["bus"]["$idx"]["va"] = r[10] #buses_dict[:,10][i]
+        European_grid["bus"]["$idx"]["base_kv"] = r[11] #buses_dict[:,11][i]
+        European_grid["bus"]["$idx"]["zone"] = r[12] #buses_dict[:,12][i]
+        European_grid["bus"]["$idx"]["vmax"] = r[13] #buses_dict[:,13][i]
+        European_grid["bus"]["$idx"]["vmin"] = r[14] #buses_dict[:,14][i]
+        European_grid["bus"]["$idx"]["lat"] = r[16] #buses_dict[:,16][i]
+        European_grid["bus"]["$idx"]["lon"] = r[17] #buses_dict[:,17][i]
+        European_grid["bus"]["$idx"]["source_id"] = []
+        push!(European_grid["bus"]["$idx"]["source_id"],"bus")
+        push!(European_grid["bus"]["$idx"]["source_id"],r[2])
+    end
 end
 # The last two buses are north sea energy island buses
 # 5930 - 6125 are interconnection buses
 
 # Bus dc -> it can be commented out if you want to keep only the AC system
-buses_dc_dict = xf["BUS_DC"]["A2:Q210"]
-buses_dc_names = buses_dc_dict[:,1]
-
 European_grid["busdc"] = Dict{String,Any}()
-for i in 1:length(buses_dc_names)
-    European_grid["busdc"]["$i"] = Dict{String,Any}()
-    European_grid["busdc"]["$i"]["name"] = buses_dc_dict[:,1][i]
-    European_grid["busdc"]["$i"]["index"] = i
-    European_grid["busdc"]["$i"]["busdc_i"] = buses_dc_dict[:,2][i]
-    European_grid["busdc"]["$i"]["bus_type"] = buses_dc_dict[:,3][i]
-    European_grid["busdc"]["$i"]["pd"] = buses_dc_dict[:,4][i]
-    European_grid["busdc"]["$i"]["qd"] = buses_dc_dict[:,5][i]
-    European_grid["busdc"]["$i"]["gs"] = buses_dc_dict[:,6][i]
-    European_grid["busdc"]["$i"]["bs"] = buses_dc_dict[:,7][i]
-    European_grid["busdc"]["$i"]["area"] = buses_dc_dict[:,8][i]
-    European_grid["busdc"]["$i"]["vm"] = buses_dc_dict[:,9][i]
-    European_grid["busdc"]["$i"]["va"] = buses_dc_dict[:,10][i]
-    European_grid["busdc"]["$i"]["basekVdc"] = buses_dc_dict[:,11][i]
-    European_grid["busdc"]["$i"]["zone"] = buses_dc_dict[:,12][i]
-    European_grid["busdc"]["$i"]["Vdcmax"] = buses_dc_dict[:,13][i]
-    European_grid["busdc"]["$i"]["Vdcmin"] = buses_dc_dict[:,14][i]
-    European_grid["busdc"]["$i"]["lat"] = buses_dc_dict[:,16][i]
-    European_grid["busdc"]["$i"]["lon"] = buses_dc_dict[:,17][i]
-    European_grid["busdc"]["$i"]["Vdc"] = 1
-    European_grid["busdc"]["$i"]["Pdc"] = 0
-    European_grid["busdc"]["$i"]["Cdc"] = 0
-    European_grid["busdc"]["$i"]["source_id"] = []
-    push!(European_grid["busdc"]["$i"]["source_id"],"busdc")
-    push!(European_grid["busdc"]["$i"]["source_id"],i)
+for r in XLSX.eachrow(xf["BUS_DC"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = i - 1
+        European_grid["busdc"]["$idx"] = Dict{String,Any}()
+        European_grid["busdc"]["$idx"]["name"] = r[1] #buses_dc_dict[:,1][i]
+        European_grid["busdc"]["$idx"]["index"] = r[2] # idx
+        European_grid["busdc"]["$idx"]["busdc_i"] = r[2] # buses_dc_dict[:,2][i]
+        European_grid["busdc"]["$idx"]["bus_type"] = r[3] #buses_dc_dict[:,3][i]
+        European_grid["busdc"]["$idx"]["pd"] = r[4] #buses_dc_dict[:,4][i]
+        European_grid["busdc"]["$idx"]["qd"] = r[5] #buses_dc_dict[:,5][i]
+        European_grid["busdc"]["$idx"]["gs"] = r[6] #buses_dc_dict[:,6][i]
+        European_grid["busdc"]["$idx"]["bs"] = r[7] #buses_dc_dict[:,7][i]
+        European_grid["busdc"]["$idx"]["area"] = r[8] #buses_dc_dict[:,8][i]
+        European_grid["busdc"]["$idx"]["vm"] = r[9] #buses_dc_dict[:,9][i]
+        European_grid["busdc"]["$idx"]["va"] = r[10] #buses_dc_dict[:,10][i]
+        European_grid["busdc"]["$idx"]["basekVdc"] = r[11] #buses_dc_dict[:,11][i]
+        European_grid["busdc"]["$idx"]["zone"] = r[12] #buses_dc_dict[:,12][i]
+        European_grid["busdc"]["$idx"]["Vdcmax"] = r[13] #buses_dc_dict[:,13][i]
+        European_grid["busdc"]["$idx"]["Vdcmin"] = r[14] #buses_dc_dict[:,14][i]
+        European_grid["busdc"]["$idx"]["lat"] = r[16] #buses_dc_dict[:,16][i]
+        European_grid["busdc"]["$idx"]["lon"] = r[17] #buses_dc_dict[:,17][i]
+        European_grid["busdc"]["$idx"]["Vdc"] = 1
+        European_grid["busdc"]["$idx"]["Pdc"] = 0
+        European_grid["busdc"]["$idx"]["Cdc"] = 0
+        European_grid["busdc"]["$idx"]["source_id"] = []
+        push!(European_grid["busdc"]["$idx"]["source_id"],"busdc")
+        push!(European_grid["busdc"]["$idx"]["source_id"],r[2])
+    end
 end
 
 # Branches
-branches_dict = xf["BRANCH"]["A2:O8859"]
-branches_types = branches_dict[:,2]
-
 European_grid["branch"] = Dict{String,Any}()
-for i in 1:length(branches_types)
-    European_grid["branch"]["$i"] = Dict{String,Any}()
-    European_grid["branch"]["$i"]["type"] = branches_dict[:,2][i]
-    if European_grid["branch"]["$i"]["type"] ==  "AC line"
-        European_grid["branch"]["$i"]["transformer"] = false
-    else
-        European_grid["branch"]["$i"]["transformer"] = true
+for r in XLSX.eachrow(xf["BRANCH"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = i - 1
+        European_grid["branch"]["$idx"] = Dict{String,Any}()
+        European_grid["branch"]["$idx"]["type"] = r[2] #branches_dict[:,2][i]
+        if European_grid["branch"]["$idx"]["type"] ==  "AC line"
+            European_grid["branch"]["$idx"]["transformer"] = false
+        else
+            European_grid["branch"]["$idx"]["transformer"] = true
+        end
+        European_grid["branch"]["$idx"]["index"] = idx
+        if ismissing(r[1])
+            European_grid["branch"]["$idx"]["interconnector"] = false
+        else
+            European_grid["branch"]["$idx"]["interconnector"] = true
+        end
+        European_grid["branch"]["$idx"]["f_bus"] = r[3] #branches_dict[:,3][i]
+        European_grid["branch"]["$idx"]["t_bus"] = r[4] #branches_dict[:,4][i]
+        European_grid["branch"]["$idx"]["br_r"] = r[5] #branches_dict[:,5][i]
+        European_grid["branch"]["$idx"]["br_x"] = r[6] #branches_dict[:,6][i]
+        European_grid["branch"]["$idx"]["b_fr"] = r[7] #branches_dict[:,7][i]
+        European_grid["branch"]["$idx"]["b_to"] = r[8] #branches_dict[:,7][i]
+        European_grid["branch"]["$idx"]["g_fr"] = 0.0
+        European_grid["branch"]["$idx"]["g_to"] = 0.0
+        European_grid["branch"]["$idx"]["rate_a"] = r[8] / European_grid["baseMVA"] #branches_dict[:,8][i]/European_grid["baseMVA"]  #Adjusting with pu values
+        European_grid["branch"]["$idx"]["rate_b"] = r[9] / European_grid["baseMVA"]#branches_dict[:,9][i]/European_grid["baseMVA"] 
+        European_grid["branch"]["$idx"]["rate_c"] = r[10]  / European_grid["baseMVA"] #branches_dict[:,10][i]/European_grid["baseMVA"] 
+        European_grid["branch"]["$idx"]["ratio"] = r[11] #/ branches_dict[:,11][i]
+        European_grid["branch"]["$idx"]["angmin"] = -pi #deepcopy(test_grid["branch"]["1"]["angmin"])
+        European_grid["branch"]["$idx"]["angmax"] = pi #deepcopy(test_grid["branch"]["1"]["angmax"])
+        European_grid["branch"]["$idx"]["br_status"] = 1
+        European_grid["branch"]["$idx"]["tap"] = 1.0
+        European_grid["branch"]["$idx"]["transformer"] = false
+        European_grid["branch"]["$idx"]["shift"] = 0.0
+        European_grid["branch"]["$idx"]["source_id"] = []
+        push!(European_grid["branch"]["$idx"]["source_id"],"branch")
+        push!(European_grid["branch"]["$idx"]["source_id"], idx)
     end
-    European_grid["branch"]["$i"]["index"] = i
-    if ismissing(branches_dict[:,1][i])
-        European_grid["branch"]["$i"]["interconnector"] = false
-    else
-        European_grid["branch"]["$i"]["interconnector"] = true
-    end
-    European_grid["branch"]["$i"]["f_bus"] = branches_dict[:,3][i]
-    European_grid["branch"]["$i"]["t_bus"] = branches_dict[:,4][i]
-    European_grid["branch"]["$i"]["br_r"] = branches_dict[:,5][i]
-    European_grid["branch"]["$i"]["br_x"] = branches_dict[:,6][i]
-    European_grid["branch"]["$i"]["b_fr"] = branches_dict[:,7][i]
-    European_grid["branch"]["$i"]["b_to"] = branches_dict[:,7][i]
-    European_grid["branch"]["$i"]["g_fr"] = 0.0
-    European_grid["branch"]["$i"]["g_to"] = 0.0
-    European_grid["branch"]["$i"]["rate_a"] = branches_dict[:,8][i]/European_grid["baseMVA"]  #Adjusting with pu values
-    European_grid["branch"]["$i"]["rate_b"] = branches_dict[:,9][i]/European_grid["baseMVA"] 
-    European_grid["branch"]["$i"]["rate_c"] = branches_dict[:,10][i]/European_grid["baseMVA"] 
-    European_grid["branch"]["$i"]["ratio"] = branches_dict[:,11][i]
-    European_grid["branch"]["$i"]["angmin"] = deepcopy(test_grid["branch"]["1"]["angmin"])
-    European_grid["branch"]["$i"]["angmax"] = deepcopy(test_grid["branch"]["1"]["angmax"])
-    European_grid["branch"]["$i"]["br_status"] = 1
-    European_grid["branch"]["$i"]["tap"] = 1.0
-    European_grid["branch"]["$i"]["transformer"] = false
-    European_grid["branch"]["$i"]["shift"] = 0.0
-    European_grid["branch"]["$i"]["source_id"] = []
-    push!(European_grid["branch"]["$i"]["source_id"],"branch")
-    push!(European_grid["branch"]["$i"]["source_id"],i)
 end
 
 # DC Branches
-branches_dc_dict = xf["BRANCH_DC"]["A2:M102"]
-branches_dc_types = branches_dc_dict[:,2]
-
 European_grid["branchdc"] = Dict{String,Any}()
-for i in 1:length(branches_dc_types)
-    European_grid["branchdc"]["$i"] = Dict{String,Any}()
-    European_grid["branchdc"]["$i"]["type"] = branches_dc_dict[:,2][i]
-    European_grid["branchdc"]["$i"]["name"] = branches_dc_dict[:,1][i]
-    European_grid["branchdc"]["$i"]["index"] = i
-    European_grid["branchdc"]["$i"]["fbusdc"] = branches_dc_dict[:,3][i]
-    European_grid["branchdc"]["$i"]["tbusdc"] = branches_dc_dict[:,4][i]
-    European_grid["branchdc"]["$i"]["r"] = branches_dc_dict[:,5][i]
-    European_grid["branchdc"]["$i"]["c"] = branches_dc_dict[:,6][i]
-    European_grid["branchdc"]["$i"]["l"] = branches_dc_dict[:,7][i]
-    European_grid["branchdc"]["$i"]["status"] = 1
-    European_grid["branchdc"]["$i"]["rateA"] = branches_dc_dict[:,8][i]/European_grid["baseMVA"]  #Adjusting with pu values
-    European_grid["branchdc"]["$i"]["rateB"] = branches_dc_dict[:,9][i]/European_grid["baseMVA"] 
-    European_grid["branchdc"]["$i"]["rateC"] = branches_dc_dict[:,10][i]/European_grid["baseMVA"] 
-    European_grid["branchdc"]["$i"]["ratio"] = branches_dc_dict[:,11][i]
-    European_grid["branchdc"]["$i"]["source_id"] = []
-    push!(European_grid["branchdc"]["$i"]["source_id"],"branchdc")
-    push!(European_grid["branchdc"]["$i"]["source_id"],i)
+for r in XLSX.eachrow(xf["BRANCH_DC"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = i - 1
+        European_grid["branchdc"]["$idx"] = Dict{String,Any}()
+        European_grid["branchdc"]["$idx"]["type"] = r[2] #branches_dc_dict[:,2][i]
+        European_grid["branchdc"]["$idx"]["name"] = r[1] #branches_dc_dict[:,1][i]
+        European_grid["branchdc"]["$idx"]["index"] = idx
+        European_grid["branchdc"]["$idx"]["fbusdc"] = r[3] #branches_dc_dict[:,3][i]
+        European_grid["branchdc"]["$idx"]["tbusdc"] = r[4] #branches_dc_dict[:,4][i]
+        European_grid["branchdc"]["$idx"]["r"] = r[5] #branches_dc_dict[:,5][i]
+        European_grid["branchdc"]["$idx"]["c"] = r[6] #branches_dc_dict[:,6][i]
+        European_grid["branchdc"]["$idx"]["l"] = r[7] #branches_dc_dict[:,7][i]
+        European_grid["branchdc"]["$idx"]["status"] = 1
+        European_grid["branchdc"]["$idx"]["rateA"] = r[8] #/ European_grid["baseMVA"] #branches_dc_dict[:,8][i]/European_grid["baseMVA"]  #Adjusting with pu values
+        European_grid["branchdc"]["$idx"]["rateB"] = r[9] #/ European_grid["baseMVA"] #branches_dc_dict[:,9][i]/European_grid["baseMVA"] 
+        European_grid["branchdc"]["$idx"]["rateC"] = r[10] #/ European_grid["baseMVA"] #branches_dc_dict[:,10][i]/European_grid["baseMVA"] 
+        European_grid["branchdc"]["$idx"]["ratio"] = r[11] #/ European_grid["baseMVA"] ##branches_dc_dict[:,11][i]
+        European_grid["branchdc"]["$idx"]["source_id"] = []
+        push!(European_grid["branchdc"]["$idx"]["source_id"],"branchdc")
+        push!(European_grid["branchdc"]["$idx"]["source_id"], idx)
+    end
 end
 
 # DC Converters
-conv_dc_dict = xf["CONVERTER"]["A2:L210"]
-conv_dc_types = conv_dc_dict[:,2]
-
 European_grid["convdc"] = Dict{String,Any}()
-for i in 1:length(conv_dc_types)
-    European_grid["convdc"]["$i"] = Dict{String,Any}()
-    European_grid["convdc"]["$i"] = deepcopy(test_grid["convdc"]["1"])
-    European_grid["convdc"]["$i"]["busdc_i"] = conv_dc_dict[:,3][i]
-    European_grid["convdc"]["$i"]["busac_i"] = conv_dc_dict[:,2][i]
-    European_grid["convdc"]["$i"]["index"] = i
-    if ismissing(conv_dc_dict[:,1][i])
-        European_grid["convdc"]["$i"]["interconnector"] = false
-    else
-        European_grid["convdc"]["$i"]["interconnector"] = true
+for r in XLSX.eachrow(xf["CONVERTER"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = i - 1
+        European_grid["convdc"]["$idx"] = Dict{String,Any}()
+        European_grid["convdc"]["$idx"] = deepcopy(test_grid["convdc"]["1"])  # To fill in default values......
+        European_grid["convdc"]["$idx"]["busdc_i"] = r[3] #conv_dc_dict[:,3][i]
+        European_grid["convdc"]["$idx"]["busac_i"] = r[2] #conv_dc_dict[:,2][i]
+        European_grid["convdc"]["$idx"]["index"] = idx
+        if ismissing(r[1])
+            European_grid["convdc"]["$idx"]["interconnector"] = false
+        else
+            European_grid["convdc"]["$idx"]["interconnector"] = true
+        end
+        European_grid["convdc"]["$idx"]["rtf"] = r[4] #conv_dc_dict[:,4][i]
+        European_grid["convdc"]["$idx"]["rc"] = r[4] #conv_dc_dict[:,4][i]
+        European_grid["convdc"]["$idx"]["xtf"] = 0.001 #conv_dc_dict[:,5][i]
+        European_grid["convdc"]["$idx"]["xc"] = 0.001#conv_dc_dict[:,5][i]
+        European_grid["convdc"]["$idx"]["bf"] = r[6] #conv_dc_dict[:,6][i]
+        European_grid["convdc"]["$idx"]["status"] = 1
+        European_grid["convdc"]["$idx"]["Pacmax"] =  r[7]#/European_grid["baseMVA"] #conv_dc_dict[:,7][i]/European_grid["baseMVA"]  #Adjusting with pu values
+        European_grid["convdc"]["$idx"]["Pacmin"] = -r[7]#/European_grid["baseMVA"] #-conv_dc_dict[:,7][i]/European_grid["baseMVA"]  #Adjusting with pu values
+        European_grid["convdc"]["$idx"]["Qacmin"] = -r[7]#/European_grid["baseMVA"]
+        European_grid["convdc"]["$idx"]["Qacmax"] = r[7]#/European_grid["baseMVA"]
+        European_grid["convdc"]["$idx"]["Imax"] = r[7]#/European_grid["baseMVA"]
+        European_grid["convdc"]["$idx"]["Pg"] = 0.0 #Adjusting with pu values
+        European_grid["convdc"]["$idx"]["ratio"] = r[10] #conv_dc_dict[:,10][i]
+        European_grid["convdc"]["$idx"]["transformer"] = 1
+        European_grid["convdc"]["$idx"]["reactor"] = 1
+        European_grid["convdc"]["$idx"]["source_id"] = []
+        push!(European_grid["convdc"]["$idx"]["source_id"],"convdc")
+        push!(European_grid["convdc"]["$idx"]["source_id"], idx)
     end
-    European_grid["convdc"]["$i"]["rtf"] = conv_dc_dict[:,4][i]
-    European_grid["convdc"]["$i"]["rc"] = conv_dc_dict[:,4][i]
-    European_grid["convdc"]["$i"]["xtf"] = 0.001 #conv_dc_dict[:,5][i]
-    European_grid["convdc"]["$i"]["xc"] = 0.001#conv_dc_dict[:,5][i]
-    European_grid["convdc"]["$i"]["bf"] = conv_dc_dict[:,6][i]
-    European_grid["convdc"]["$i"]["status"] = 1
-    European_grid["convdc"]["$i"]["Pacmax"] = conv_dc_dict[:,7][i]/European_grid["baseMVA"]  #Adjusting with pu values
-    European_grid["convdc"]["$i"]["Pacmin"] = -conv_dc_dict[:,7][i]/European_grid["baseMVA"]  #Adjusting with pu values
-    European_grid["convdc"]["$i"]["Pg"] = 0.0 #Adjusting with pu values
-    European_grid["convdc"]["$i"]["ratio"] = conv_dc_dict[:,10][i]
-    European_grid["convdc"]["$i"]["transformer"] = 1
-    European_grid["convdc"]["$i"]["reactor"] = 1
-    European_grid["convdc"]["$i"]["source_id"] = []
-    push!(European_grid["convdc"]["$i"]["source_id"],"convdc")
-    push!(European_grid["convdc"]["$i"]["source_id"],i)
 end
 
 # Load
-load_dict = xf["DEMAND"]["A2:E3443"]
-load_types = load_dict[:,2]
 
 European_grid["load"] = Dict{String,Any}()
-for i in 1:length(load_types)
-    European_grid["load"]["$i"] = Dict{String,Any}()
-    European_grid["load"]["$i"]["country"] = load_dict[:,1][i]
-    European_grid["load"]["$i"]["zone"] = load_dict[:,2][i]
-    European_grid["load"]["$i"]["load_bus"] = load_dict[:,3][i]
-    European_grid["load"]["$i"]["pmax"] = load_dict[:,4][i]/European_grid["baseMVA"] 
-    if load_dict[:,5][i] == "-"
-        European_grid["load"]["$i"]["cosphi"] = 1
-    else
-        European_grid["load"]["$i"]["cosphi"] = load_dict[:,5][i]
+for r in XLSX.eachrow(xf["DEMAND"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = i - 1
+        European_grid["load"]["$idx"] = Dict{String,Any}()
+        European_grid["load"]["$idx"]["country"] = r[1] #load_dict[:,1][i]
+        European_grid["load"]["$idx"]["zone"] = r[2] #load_dict[:,2][i]
+        European_grid["load"]["$idx"]["load_bus"] = r[3] #load_dict[:,3][i]
+        European_grid["load"]["$idx"]["pmax"] = r[4] /European_grid["baseMVA"] #load_dict[:,4][i]/European_grid["baseMVA"] 
+        if r[5] == "-"
+            European_grid["load"]["$idx"]["cosphi"] = 1
+        else
+            European_grid["load"]["$idx"]["cosphi"] = r[5] #load_dict[:,5][i]
+        end
+        European_grid["load"]["$idx"]["pd"] = r[4] / European_grid["baseMVA"] # load_dict[:,4][i]/European_grid["baseMVA"] 
+        European_grid["load"]["$idx"]["qd"] = r[4] / European_grid["baseMVA"] * sqrt(1 - European_grid["load"]["$idx"]["cosphi"]^2)
+        European_grid["load"]["$idx"]["index"] = idx
+        European_grid["load"]["$idx"]["status"] = 1
+        European_grid["load"]["$idx"]["source_id"] = []
+        push!(European_grid["load"]["$idx"]["source_id"],"bus")
+        push!(European_grid["load"]["$idx"]["source_id"], idx)
     end
-    European_grid["load"]["$i"]["pd"] = load_dict[:,4][i]/European_grid["baseMVA"] 
-    European_grid["load"]["$i"]["qd"] = load_dict[:,4][i]/European_grid["baseMVA"]  * sqrt(1 - European_grid["load"]["$i"]["cosphi"]^2)
-    European_grid["load"]["$i"]["index"] = i
-    European_grid["load"]["$i"]["status"] = 1
-    European_grid["load"]["$i"]["source_id"] = []
-    push!(European_grid["load"]["$i"]["source_id"],"bus")
-    push!(European_grid["load"]["$i"]["source_id"],i)
 end
 
 # Including load
-load_peak_dict = xf["DEMAND_OVERVIEW"]["A2:B44"]
-load_peak_name = load_peak_dict[:,1]
-load_peak_power = load_peak_dict[:,2]
-
 for (l_id,l) in European_grid["load"]
-    for i in 1:length(load_peak_name)
-        if l["zone"] == load_peak_name[i]
-            l["country_peak_load"] = load_peak_power[i]/European_grid["baseMVA"] 
+    for r in XLSX.eachrow(xf["DEMAND_OVERVIEW"])
+        i = XLSX.row_number(r)
+        if i > 1
+            if l["zone"] == r[1]
+                l["country_peak_load"] = r[2] / European_grid["baseMVA"] 
+            end
         end
     end
     l["powerportion"] = l["pmax"]/l["country_peak_load"]
 end
-
-
-# ToDo:
-# Fix the reading in of the generators, to avoid strange things happeing with indexes:
-#### Step1: read in all convertional generator using the "GEN" sheetnames
-#### Step2: add one by one all RES, e.g. "ONSHORE", "OFFSHORE", "SOLAR", "PHS", .....
-
+####### READ IN GENERATION DATA #######################
 European_grid["gen"] = Dict{String,Any}()
-gen_idx = xf["GEN"]["C2:C1230"] # to do, make length dynamic eventually....
-for idx in 1:length(gen_idx)
-    European_grid["gen"]["$idx"] = Dict{String,Any}()
-    European_grid["gen"]["$idx"]["index"] = idx
-    European_grid["gen"]["$idx"]["country"] = xf["GEN"]["D2:D1230"][idx]
-    European_grid["gen"]["$idx"]["zone"] = xf["GEN"]["E2:E1230"][idx]
-    European_grid["gen"]["$idx"]["gen_bus"] = xf["GEN"]["F2:F1230"][idx]
-    European_grid["gen"]["$idx"]["pmax"] = xf["GEN"]["H2:H1230"][idx]/European_grid["baseMVA"] 
-    European_grid["gen"]["$idx"]["pmin"] = xf["GEN"]["G2:G1230"][idx]/European_grid["baseMVA"] 
-    European_grid["gen"]["$idx"]["qmax"] = 0.0
-    European_grid["gen"]["$idx"]["qmin"] = 0.0
-    European_grid["gen"]["$idx"]["cost"] = [xf["GEN"]["M2:M1230"][idx] * European_grid["baseMVA"], 0.0]  # Assumption here, to be checked
-    European_grid["gen"]["$idx"]["marginal_cost"] = xf["GEN"]["K2:K1230"][idx] * European_grid["baseMVA"]  # Assumption here, to be checked
-    European_grid["gen"]["$idx"]["co2_add_on"] = xf["GEN"]["L2:L1230"][idx] * European_grid["baseMVA"]  # Assumption here, to be checked
-    European_grid["gen"]["$idx"]["ncost"] = 2
-    European_grid["gen"]["$idx"]["model"] = 2
-    European_grid["gen"]["$idx"]["gen_status"] = 1
-    European_grid["gen"]["$idx"]["vg"] = 1.0
-    European_grid["gen"]["$idx"]["source_id"] = []
-    European_grid["gen"]["$idx"]["name"] = xf["GEN"]["A2:A1230"][idx]  # Assumption here, to be checked
-    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
-    push!(European_grid["gen"]["$idx"]["source_id"], idx)
+for r in XLSX.eachrow(xf["GEN"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = i - 1
+        European_grid["gen"]["$idx"] = Dict{String,Any}()
+        European_grid["gen"]["$idx"]["index"] = idx
+        European_grid["gen"]["$idx"]["country"] = r[4] #xf["GEN"]["D2:D1230"][idx]
+        European_grid["gen"]["$idx"]["zone"] = r[5] #xf["GEN"]["E2:E1230"][idx]
+        European_grid["gen"]["$idx"]["gen_bus"] = r[6] #xf["GEN"]["F2:F1230"][idx]
+        European_grid["gen"]["$idx"]["pmax"] = r[8] / European_grid["baseMVA"]  #xf["GEN"]["H2:H1230"][idx]/European_grid["baseMVA"] 
+        European_grid["gen"]["$idx"]["pmin"] = r[7] / European_grid["baseMVA"] #xf["GEN"]["G2:G1230"][idx]/European_grid["baseMVA"] 
+        European_grid["gen"]["$idx"]["qmax"] =  European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["qmin"] = -European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["cost"] = [r[13] * European_grid["baseMVA"], 0.0]  # Assumption here, to be checked
+        European_grid["gen"]["$idx"]["marginal_cost"] = r[11] * European_grid["baseMVA"]  # Assumption here, to be checked
+        European_grid["gen"]["$idx"]["co2_add_on"] = r[12] * European_grid["baseMVA"]  # Assumption here, to be checked
+        European_grid["gen"]["$idx"]["ncost"] = 2
+        European_grid["gen"]["$idx"]["model"] = 2
+        European_grid["gen"]["$idx"]["gen_status"] = 1
+        European_grid["gen"]["$idx"]["vg"] = 1.0
+        European_grid["gen"]["$idx"]["source_id"] = []
+        European_grid["gen"]["$idx"]["name"] = r[1]  # Assumption here, to be checked
+        push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+        push!(European_grid["gen"]["$idx"]["source_id"], idx)
 
-    type = xf["GEN"]["B2:B1230"][idx]
-    if type == "Gas"
-        type_tyndp = "Gas CCGT new"
-    elseif type == "Oil"
-        type_tyndp = "Heavy oil old 1 Bio"
-    elseif type == "Nuclear"
-        type_tyndp = "Nuclear"
-    elseif type == "Biomass"
-        type_tyndp = "Other RES"
-    elseif type == "Hard Coal"
-        type_tyndp = "Hard coal old 2 Bio"
-    elseif type == "Lignite"
-        type_tyndp = "Lignite old 1"
+        type = r[2]
+        if type == "Gas"
+            type_tyndp = "Gas CCGT new"
+        elseif type == "Oil"
+            type_tyndp = "Heavy oil old 1 Bio"
+        elseif type == "Nuclear"
+            type_tyndp = "Nuclear"
+        elseif type == "Biomass"
+            type_tyndp = "Other RES"
+        elseif type == "Hard Coal"
+            type_tyndp = "Hard coal old 2 Bio"
+        elseif type == "Lignite"
+            type_tyndp = "Lignite old 1"
+        end
+        European_grid["gen"]["$idx"]["type"] = type
+        European_grid["gen"]["$idx"]["type_tyndp"] = type_tyndp
     end
-    European_grid["gen"]["$idx"]["type"] = type
-    European_grid["gen"]["$idx"]["type_tyndp"] = type_tyndp
 end
 
 # Run-off-river
-gen_hydro_ror_dict = xf["ROR"]["A2:F650"]
-gen_hydro_ror_types = gen_hydro_ror_dict[:,2]
 number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
-for i in 1:length(gen_hydro_ror_types)
-    idx = number_of_gens + i
-    European_grid["gen"]["$idx"] = Dict{String,Any}()
-    European_grid["gen"]["$idx"]["index"] = idx #gen_hydro_ror_dict[:,2][i]
-    European_grid["gen"]["$idx"]["country"] = gen_hydro_ror_dict[:,3][i]
-    European_grid["gen"]["$idx"]["zone"] = gen_hydro_ror_dict[:,4][i]
-    European_grid["gen"]["$idx"]["gen_bus"] = gen_hydro_ror_dict[:,5][i]
-    European_grid["gen"]["$idx"]["type"] = gen_hydro_ror_dict[:,1][i]
-    European_grid["gen"]["$idx"]["type_tyndp"] = "Run-of-River"
-    European_grid["gen"]["$idx"]["pmax"] = gen_hydro_ror_dict[:,6][i]/European_grid["baseMVA"] 
-    European_grid["gen"]["$idx"]["pmin"] = 0.0
-    European_grid["gen"]["$idx"]["qmax"] = 0.0
-    European_grid["gen"]["$idx"]["qmin"] = 0.0
-    European_grid["gen"]["$idx"]["cost"] = [60.0,0.0] # Assumption here, to be checked
-    European_grid["gen"]["$idx"]["ncost"] = 2
-    European_grid["gen"]["$idx"]["model"] = 2
-    European_grid["gen"]["$idx"]["gen_status"] = 1
-    European_grid["gen"]["$idx"]["vg"] = 1.0
-    European_grid["gen"]["$idx"]["source_id"] = []
-    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
-    push!(European_grid["gen"]["$idx"]["source_id"], idx)
+for r in XLSX.eachrow(xf["ROR"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = number_of_gens + i - 1 # 
+        European_grid["gen"]["$idx"] = Dict{String,Any}()
+        European_grid["gen"]["$idx"]["index"] = idx 
+        European_grid["gen"]["$idx"]["country"] = r[3] #gen_hydro_ror_dict[:,3][i]
+        European_grid["gen"]["$idx"]["zone"] = r[4] #gen_hydro_ror_dict[:,4][i]
+        European_grid["gen"]["$idx"]["gen_bus"] = r[5] #gen_hydro_ror_dict[:,5][i]
+        European_grid["gen"]["$idx"]["type"] = r[1] #gen_hydro_ror_dict[:,1][i]
+        European_grid["gen"]["$idx"]["type_tyndp"] = "Run-of-River"
+        European_grid["gen"]["$idx"]["pmax"] = r[6] / European_grid["baseMVA"] #gen_hydro_ror_dict[:,6][i]/European_grid["baseMVA"] 
+        European_grid["gen"]["$idx"]["pmin"] = 0.0
+        European_grid["gen"]["$idx"]["qmax"] =  European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["qmin"] = -European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["cost"] = [25.0  * European_grid["baseMVA"], 0.0] # Assumption here, to be checked
+        European_grid["gen"]["$idx"]["ncost"] = 2
+        European_grid["gen"]["$idx"]["model"] = 2
+        European_grid["gen"]["$idx"]["gen_status"] = 1
+        European_grid["gen"]["$idx"]["vg"] = 1.0
+        European_grid["gen"]["$idx"]["source_id"] = []
+        push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+        push!(European_grid["gen"]["$idx"]["source_id"], idx)
+    end
 end
 
 ##### ONSHORE WIND
-gen_onshore_wind_dict = xf["ONSHORE"]["A2:F2044"]
-gen_onshore_wind_types = gen_onshore_wind_dict[:,2]
 number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
-for i in 1:length(gen_onshore_wind_types)
-    idx = number_of_gens + i
-    European_grid["gen"]["$idx"] = Dict{String,Any}()
-    European_grid["gen"]["$idx"]["index"] = idx
-    European_grid["gen"]["$idx"]["country"] = gen_onshore_wind_dict[:,3][i]
-    European_grid["gen"]["$idx"]["zone"] = gen_onshore_wind_dict[:,4][i]
-    European_grid["gen"]["$idx"]["gen_bus"] = gen_onshore_wind_dict[:,5][i]
-    European_grid["gen"]["$idx"]["type"] = gen_onshore_wind_dict[:,1][i]
-    European_grid["gen"]["$idx"]["type_tyndp"] = "Onshore Wind"
-    European_grid["gen"]["$idx"]["pmax"] = gen_onshore_wind_dict[:,6][i]/European_grid["baseMVA"] 
-    European_grid["gen"]["$idx"]["pmin"] = 0.0
-    European_grid["gen"]["$idx"]["qmax"] = 0.0
-    European_grid["gen"]["$idx"]["qmin"] = 0.0
-    European_grid["gen"]["$idx"]["cost"] = [25.0,0.0] 
-    European_grid["gen"]["$idx"]["ncost"] = 2
-    European_grid["gen"]["$idx"]["model"] = 2
-    European_grid["gen"]["$idx"]["gen_status"] = 1
-    European_grid["gen"]["$idx"]["vg"] = 1.0
-    European_grid["gen"]["$idx"]["source_id"] = []
-    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
-    push!(European_grid["gen"]["$idx"]["source_id"], idx)
+for r in XLSX.eachrow(xf["ONSHORE"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = number_of_gens + i - 1 # 
+        European_grid["gen"]["$idx"] = Dict{String,Any}()
+        European_grid["gen"]["$idx"]["index"] = idx
+        European_grid["gen"]["$idx"]["country"] = r[3] #gen_onshore_wind_dict[:,3][i]
+        European_grid["gen"]["$idx"]["zone"] = r[4] #gen_onshore_wind_dict[:,4][i]
+        European_grid["gen"]["$idx"]["gen_bus"] = r[5] #gen_onshore_wind_dict[:,5][i]
+        European_grid["gen"]["$idx"]["type"] = r[1] #gen_onshore_wind_dict[:,1][i]
+        European_grid["gen"]["$idx"]["type_tyndp"] = "Onshore Wind"
+        European_grid["gen"]["$idx"]["pmax"] = r[6] /European_grid["baseMVA"] #gen_onshore_wind_dict[:,6][i]/European_grid["baseMVA"] 
+        European_grid["gen"]["$idx"]["pmin"] = 0.0
+        European_grid["gen"]["$idx"]["qmax"] =  European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["qmin"] = -European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["cost"] = [25.0  * European_grid["baseMVA"] ,0.0] 
+        European_grid["gen"]["$idx"]["ncost"] = 2
+        European_grid["gen"]["$idx"]["model"] = 2
+        European_grid["gen"]["$idx"]["gen_status"] = 1
+        European_grid["gen"]["$idx"]["vg"] = 1.0
+        European_grid["gen"]["$idx"]["source_id"] = []
+        push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+        push!(European_grid["gen"]["$idx"]["source_id"], idx)
+    end
 end
-
 ####### OFFSHORE WIND
-gen_offshore_wind_dict = xf["OFFSHORE"]["A2:F131"]
-gen_offshore_wind_types = gen_offshore_wind_dict[:,2]
 number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
-for i in 1:length(gen_offshore_wind_types)
-    idx = number_of_gens + i
-    European_grid["gen"]["$idx"] = Dict{String,Any}()
-    European_grid["gen"]["$idx"]["index"] = idx
-    European_grid["gen"]["$idx"]["country"] = gen_offshore_wind_dict[:,3][i]
-    European_grid["gen"]["$idx"]["zone"] = gen_offshore_wind_dict[:,4][i]
-    European_grid["gen"]["$idx"]["gen_bus"] = gen_offshore_wind_dict[:,5][i]
-    European_grid["gen"]["$idx"]["type"] = gen_offshore_wind_dict[:,1][i]
-    European_grid["gen"]["$idx"]["type_tyndp"] = "Offshore Wind"
-    European_grid["gen"]["$idx"]["pmax"] = gen_offshore_wind_dict[:,6][i]/European_grid["baseMVA"] 
-    European_grid["gen"]["$idx"]["pmin"] = 0.0
-    European_grid["gen"]["$idx"]["qmax"] = 0.0
-    European_grid["gen"]["$idx"]["qmin"] = 0.0
-    European_grid["gen"]["$idx"]["cost"] = [59.0,0.0] 
-    European_grid["gen"]["$idx"]["ncost"] = 2
-    European_grid["gen"]["$idx"]["model"] = 2
-    European_grid["gen"]["$idx"]["gen_status"] = 1
-    European_grid["gen"]["$idx"]["vg"] = 1.0
-    European_grid["gen"]["$idx"]["source_id"] = []
-    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
-    push!(European_grid["gen"]["$idx"]["source_id"], idx)
+for r in XLSX.eachrow(xf["OFFSHORE"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = number_of_gens + i - 2 # Weird read in bug....
+        European_grid["gen"]["$idx"] = Dict{String,Any}()
+        European_grid["gen"]["$idx"]["index"] = idx
+        European_grid["gen"]["$idx"]["country"] = r[3] #gen_offshore_wind_dict[:,3][i]
+        European_grid["gen"]["$idx"]["zone"] = r[4] #gen_offshore_wind_dict[:,4][i]
+        European_grid["gen"]["$idx"]["gen_bus"] = r[5] #gen_offshore_wind_dict[:,5][i]
+        European_grid["gen"]["$idx"]["type"] = r[1] #gen_offshore_wind_dict[:,1][i]
+        European_grid["gen"]["$idx"]["type_tyndp"] = "Offshore Wind"
+        European_grid["gen"]["$idx"]["pmax"] = r[6] / European_grid["baseMVA"]  #gen_offshore_wind_dict[:,6][i]/European_grid["baseMVA"] 
+        European_grid["gen"]["$idx"]["pmin"] = 0.0
+        European_grid["gen"]["$idx"]["qmax"] =  European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["qmin"] = -European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["cost"] = [59.0 * European_grid["baseMVA"],0.0] 
+        European_grid["gen"]["$idx"]["ncost"] = 2
+        European_grid["gen"]["$idx"]["model"] = 2
+        European_grid["gen"]["$idx"]["gen_status"] = 1
+        European_grid["gen"]["$idx"]["vg"] = 1.0
+        European_grid["gen"]["$idx"]["source_id"] = []
+        push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+        push!(European_grid["gen"]["$idx"]["source_id"], idx)
+    end
 end
 
 ##### SOLAR PV
-gen_solar_dict = xf["SOLAR"]["A2:F3195"]
-gen_solar_types = gen_solar_dict[:,2]
 number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
-for i in 1:length(gen_solar_types)
-    idx = number_of_gens + i
-    European_grid["gen"]["$idx"] = Dict{String,Any}()
-    European_grid["gen"]["$idx"]["index"] = idx
-    European_grid["gen"]["$idx"]["country"] = gen_solar_dict[:,3][i]
-    European_grid["gen"]["$idx"]["zone"] = gen_solar_dict[:,4][i]
-    European_grid["gen"]["$idx"]["gen_bus"] = gen_solar_dict[:,5][i]
-    European_grid["gen"]["$idx"]["type"] = gen_solar_dict[:,1][i]
-    European_grid["gen"]["$idx"]["type_tyndp"] = "Solar PV"
-    European_grid["gen"]["$idx"]["pmax"] = gen_solar_dict[:,6][i]/European_grid["baseMVA"] 
-    European_grid["gen"]["$idx"]["pmin"] = 0.0
-    European_grid["gen"]["$idx"]["qmax"] = 0.0
-    European_grid["gen"]["$idx"]["qmin"] = 0.0
-    European_grid["gen"]["$idx"]["cost"] = [18.0,0.0] 
-    European_grid["gen"]["$idx"]["ncost"] = 2
-    European_grid["gen"]["$idx"]["model"] = 2
-    European_grid["gen"]["$idx"]["gen_status"] = 1
-    European_grid["gen"]["$idx"]["vg"] = 1.0
-    European_grid["gen"]["$idx"]["source_id"] = []
-    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
-    push!(European_grid["gen"]["$idx"]["source_id"], idx)
+for r in XLSX.eachrow(xf["SOLAR"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = number_of_gens + i - 1 # 
+        European_grid["gen"]["$idx"] = Dict{String,Any}()
+        European_grid["gen"]["$idx"]["index"] = idx
+        European_grid["gen"]["$idx"]["country"] = r[3] #gen_solar_dict[:,3][i]
+        European_grid["gen"]["$idx"]["zone"] = r[4] #gen_solar_dict[:,4][i]
+        European_grid["gen"]["$idx"]["gen_bus"] = r[5] #gen_solar_dict[:,5][i]
+        European_grid["gen"]["$idx"]["type"] = r[1] #gen_solar_dict[:,1][i]
+        European_grid["gen"]["$idx"]["type_tyndp"] = "Solar PV"
+        European_grid["gen"]["$idx"]["pmax"] = r[6] / European_grid["baseMVA"]  #gen_solar_dict[:,6][i]/European_grid["baseMVA"] 
+        European_grid["gen"]["$idx"]["pmin"] = 0.0
+        European_grid["gen"]["$idx"]["qmax"] =  European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["qmin"] = -European_grid["gen"]["$idx"]["pmax"] * 0.5
+        European_grid["gen"]["$idx"]["cost"] = [18.0  * European_grid["baseMVA"],0.0] 
+        European_grid["gen"]["$idx"]["ncost"] = 2
+        European_grid["gen"]["$idx"]["model"] = 2
+        European_grid["gen"]["$idx"]["gen_status"] = 1
+        European_grid["gen"]["$idx"]["vg"] = 1.0
+        European_grid["gen"]["$idx"]["source_id"] = []
+        push!(European_grid["gen"]["$idx"]["source_id"],"gen")
+        push!(European_grid["gen"]["$idx"]["source_id"], idx)
+    end
 end
 
 
-# ####### Reservoir & PHS as storage
-# hydro reservoir -> convert to storage later
-gen_hydro_res_dict = xf["RES"]["A2:H401"]
-gen_hydro_res_types = gen_hydro_res_dict[:,2]
-number_of_gens = maximum([gen["index"] for (g, gen) in European_grid["gen"]])
-for i in 1:length(gen_hydro_res_types)
-    idx = number_of_gens + i  
-    European_grid["gen"]["$idx"] = Dict{String,Any}()
-    European_grid["gen"]["$idx"]["index"] = idx
-    European_grid["gen"]["$idx"]["country"] = gen_hydro_res_dict[:,3][i]
-    European_grid["gen"]["$idx"]["zone"] = gen_hydro_res_dict[:,4][i]
-    European_grid["gen"]["$idx"]["gen_bus"] = gen_hydro_res_dict[:,5][i]
-    European_grid["gen"]["$idx"]["type"] = gen_hydro_res_dict[:,1][i]
-    European_grid["gen"]["$idx"]["type_tyndp"] = "Reservoir"
-    European_grid["gen"]["$idx"]["pmax"] = gen_hydro_res_dict[:,6][i]/European_grid["baseMVA"] 
-    European_grid["gen"]["$idx"]["capacity"] = gen_hydro_res_dict[:,7][i]/European_grid["baseMVA"] 
-    European_grid["gen"]["$idx"]["pmin"] = 0.0
-    European_grid["gen"]["$idx"]["qmax"] = 0.0
-    European_grid["gen"]["$idx"]["qmin"] = 0.0
-    European_grid["gen"]["$idx"]["cost"] = [gen_hydro_res_dict[:,7][i] * European_grid["baseMVA"] ,0.0] # Assumption here, to be checked
-    European_grid["gen"]["$idx"]["ncost"] = 2
-    European_grid["gen"]["$idx"]["model"] = 2
-    European_grid["gen"]["$idx"]["gen_status"] = 1
-    European_grid["gen"]["$idx"]["vg"] = 1.0
-    European_grid["gen"]["$idx"]["source_id"] = []
-    push!(European_grid["gen"]["$idx"]["source_id"],"gen")
-    push!(European_grid["gen"]["$idx"]["source_id"], idx)
+# ####### Hydro reservoir as storage
+European_grid["storage"] = Dict{String, Any}()
+for r in XLSX.eachrow(xf["RES"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = i - 1 # 
+        European_grid["storage"]["$idx"] = Dict{String,Any}()
+        European_grid["storage"]["$idx"]["index"] = idx
+        European_grid["storage"]["$idx"]["country"] = r[3] #hydro_res_dict[:,3][i]
+        European_grid["storage"]["$idx"]["zone"] = r[4] #hydro_res_dict[:,4][i]
+        European_grid["storage"]["$idx"]["storage_bus"] = r[5] #hydro_res_dict[:,5][i]
+        European_grid["storage"]["$idx"]["type"] = r[1] #hydro_res_dict[:,1][i]
+        European_grid["storage"]["$idx"]["type_tyndp"] = "Reservoir"
+        European_grid["storage"]["$idx"]["ps"] = 0.0
+        European_grid["storage"]["$idx"]["qs"] = 0.0
+        European_grid["storage"]["$idx"]["energy"] = r[7] / European_grid["baseMVA"] #hydro_res_dict[:,7][i]/European_grid["baseMVA"]
+        European_grid["storage"]["$idx"]["energy_rating"] = r[7] / European_grid["baseMVA"]
+        European_grid["storage"]["$idx"]["charge_rating"] = 0.0
+        European_grid["storage"]["$idx"]["discharge_rating"] = r[6] / European_grid["baseMVA"] 
+        European_grid["storage"]["$idx"]["charge_efficiency"] = 1.0 
+        European_grid["storage"]["$idx"]["discharge_efficiency"] = 0.95 
+        European_grid["storage"]["$idx"]["thermal_rating"] = r[6] / European_grid["baseMVA"]
+        European_grid["storage"]["$idx"]["qmax"] =  European_grid["storage"]["$idx"]["thermal_rating"] * 0.5
+        European_grid["storage"]["$idx"]["qmin"] = -European_grid["storage"]["$idx"]["thermal_rating"] * 0.5
+        European_grid["storage"]["$idx"]["r"] = 0.0
+        European_grid["storage"]["$idx"]["x"] = 0.0
+        European_grid["storage"]["$idx"]["p_loss"] = 0.0
+        European_grid["storage"]["$idx"]["q_loss"] = 0.0
+        European_grid["storage"]["$idx"]["status"] = 1
+        European_grid["storage"]["$idx"]["cost"] = [r[8] * European_grid["baseMVA"] ,0.0] # Assumption here, to be checked
+        European_grid["storage"]["$idx"]["source_id"] = []
+        push!(European_grid["storage"]["$idx"]["source_id"],"storage")
+        push!(European_grid["storage"]["$idx"]["source_id"], idx)
+    end
 end
 
-#######
+# ####### Pumped hydro stroage
+number_of_strg = maximum([storage["index"] for (s, storage) in European_grid["storage"]])
+for r in XLSX.eachrow(xf["PHS"])
+    i = XLSX.row_number(r)
+    if i > 1 # compensate for header
+        idx = number_of_strg + i - 1 # 
+        European_grid["storage"]["$idx"] = Dict{String,Any}()
+        European_grid["storage"]["$idx"]["index"] = idx
+        European_grid["storage"]["$idx"]["country"] = r[3] #hydro_phs_dict[:,3][i]
+        European_grid["storage"]["$idx"]["zone"] = r[4] #hydro_phs_dict[:,4][i]
+        European_grid["storage"]["$idx"]["storage_bus"] = r[5] #hydro_phs_dict[:,5][i]
+        European_grid["storage"]["$idx"]["type"] = r[1] #hydro_phs_dict[:,1][i]
+        European_grid["storage"]["$idx"]["type_tyndp"] = "Reservoir"
+        European_grid["storage"]["$idx"]["ps"] = 0.0
+        European_grid["storage"]["$idx"]["qs"] = 0.0
+        European_grid["storage"]["$idx"]["energy"] = r[8] / European_grid["baseMVA"] / 2
+        European_grid["storage"]["$idx"]["energy_rating"] = r[8]/European_grid["baseMVA"]
+        European_grid["storage"]["$idx"]["charge_rating"] =  r[7]/European_grid["baseMVA"]
+        European_grid["storage"]["$idx"]["discharge_rating"] = r[6]/European_grid["baseMVA"] 
+        European_grid["storage"]["$idx"]["charge_efficiency"] = 1.0 
+        European_grid["storage"]["$idx"]["discharge_efficiency"] = 0.95 
+        European_grid["storage"]["$idx"]["thermal_rating"] = r[6]/European_grid["baseMVA"]
+        European_grid["storage"]["$idx"]["qmax"] =  European_grid["storage"]["$idx"]["thermal_rating"] * 0.5
+        European_grid["storage"]["$idx"]["qmin"] = -European_grid["storage"]["$idx"]["thermal_rating"] * 0.5
+        European_grid["storage"]["$idx"]["r"] = 0.0
+        European_grid["storage"]["$idx"]["x"] = 0.0
+        European_grid["storage"]["$idx"]["p_loss"] = 0.0
+        European_grid["storage"]["$idx"]["q_loss"] = 0.0
+        European_grid["storage"]["$idx"]["status"] = 1
+        European_grid["storage"]["$idx"]["cost"] = [r[9] * European_grid["baseMVA"] ,0.0] # Assumption here, to be checked
+        European_grid["storage"]["$idx"]["source_id"] = []
+        push!(European_grid["storage"]["$idx"]["source_id"],"storage")
+        push!(European_grid["storage"]["$idx"]["source_id"], idx)
+    end
+end
+
+############## OVERVIEW ###################
+# TO DO: Fix later with dynamic lenght of sheet.....
 zone_names = xf["BUS_OVERVIEW"]["F2:F43"]
 European_grid["zonal_generation_capacity"] = Dict{String, Any}()
 European_grid["zonal_peak_demand"] = Dict{String, Any}()
