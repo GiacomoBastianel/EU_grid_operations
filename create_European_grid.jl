@@ -210,7 +210,6 @@ for r in XLSX.eachrow(xf["CONVERTER"])
 end
 
 # Load
-
 European_grid["load"] = Dict{String,Any}()
 for r in XLSX.eachrow(xf["DEMAND"])
     i = XLSX.row_number(r)
@@ -248,6 +247,7 @@ for (l_id,l) in European_grid["load"]
     end
     l["powerportion"] = l["pmax"]/l["country_peak_load"]
 end
+
 ####### READ IN GENERATION DATA #######################
 European_grid["gen"] = Dict{String,Any}()
 for r in XLSX.eachrow(xf["GEN"])
@@ -500,7 +500,7 @@ for zone in zone_names
         European_grid["zonal_generation_capacity"]["$idx"]["Reservoir capacity"] =  xf["HYDRO_OVERVIEW"]["D3:D44"][idx]/European_grid["baseMVA"]
         European_grid["zonal_generation_capacity"]["$idx"]["PHS"] =  xf["HYDRO_OVERVIEW"]["E3:E44"][idx]/European_grid["baseMVA"]
         European_grid["zonal_generation_capacity"]["$idx"]["PHS capacity"] =  xf["HYDRO_OVERVIEW"]["F3:F44"][idx]/European_grid["baseMVA"]
-        # Thermal
+        # Thermal -> This may need to be updated, no nuclear in BE instead of 5.943 GW ...
         European_grid["zonal_generation_capacity"]["$idx"]["Other RES"] =  xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
         European_grid["zonal_generation_capacity"]["$idx"]["Gas CCGT new"] =  xf["THERMAL_OVERVIEW"]["C2:C43"][idx]/European_grid["baseMVA"]
         European_grid["zonal_generation_capacity"]["$idx"]["Hard coal old 2 Bio"] =  xf["THERMAL_OVERVIEW"]["D2:D43"][idx]/European_grid["baseMVA"]
@@ -511,6 +511,7 @@ for zone in zone_names
     European_grid["zonal_peak_demand"]["$idx"] = xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
 end
 ######
+# Making sure all the keys for PowerModels are there
 European_grid["source_type"] = deepcopy(test_grid["source_type"])
 European_grid["switch"] = deepcopy(test_grid["switch"])
 European_grid["storage"] = deepcopy(test_grid["storage"])
