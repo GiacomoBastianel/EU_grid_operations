@@ -55,6 +55,17 @@ function create_european_grid(output_filename::String = "./data_sources/European
                     end
                 end
             end
+            if r[12] == 31
+                European_grid["bus"]["$idx"]["zone"] = "XB_node"
+            elseif r[12] == 32
+                European_grid["bus"]["$idx"]["zone"] = "TYNDP"
+            elseif r[12] == 33
+                European_grid["bus"]["$idx"]["zone"] = "NSEH"
+            end
+            # treat DE-LU as DE!!!!!
+            if r[2] >= 4764 &&  r[2] <= 4780  
+                European_grid["bus"]["$idx"]["zone"] = "DE"
+            end
         end
     end
     # The last two buses are north sea energy island buses
