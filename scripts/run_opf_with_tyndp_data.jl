@@ -67,6 +67,8 @@ res_and_demand_timeseries = _EUGO.create_res_and_demand_time_series(wind_onshore
 # Scale generation capacity based on TYNDP data
 _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_mapping)
 
+zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"])
+
 # Start runnning hourly OPF calculations
 hour_start_idx = 1 
 hour_end_idx = 24

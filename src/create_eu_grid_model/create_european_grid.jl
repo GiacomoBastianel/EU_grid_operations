@@ -39,7 +39,7 @@ function create_european_grid(output_filename::String = "./data_sources/European
             European_grid["bus"]["$idx"]["vm"] = r[9] #buses_dict[:,9][i]
             European_grid["bus"]["$idx"]["va"] = r[10] #buses_dict[:,10][i]
             European_grid["bus"]["$idx"]["base_kv"] = r[11] #buses_dict[:,11][i]
-            European_grid["bus"]["$idx"]["zone"] = r[12] #buses_dict[:,12][i]
+            European_grid["bus"]["$idx"]["country"] = r[12] #buses_dict[:,12][i]
             European_grid["bus"]["$idx"]["vmax"] = r[13] #buses_dict[:,13][i]
             European_grid["bus"]["$idx"]["vmin"] = r[14] #buses_dict[:,14][i]
             European_grid["bus"]["$idx"]["lat"] = r[16] #buses_dict[:,16][i]
@@ -47,6 +47,14 @@ function create_european_grid(output_filename::String = "./data_sources/European
             European_grid["bus"]["$idx"]["source_id"] = []
             push!(European_grid["bus"]["$idx"]["source_id"],"bus")
             push!(European_grid["bus"]["$idx"]["source_id"],r[2])
+            for r_ in XLSX.eachrow(xf["BUS_OVERVIEW"])
+                i_ = XLSX.row_number(r_)
+                if i_ > 1
+                    if  r[2] >= r_[7]  && r[2] <= r_[8]  
+                        European_grid["bus"]["$idx"]["zone"] = r_[6] 
+                    end
+                end
+            end
         end
     end
     # The last two buses are north sea energy island buses
@@ -57,7 +65,7 @@ function create_european_grid(output_filename::String = "./data_sources/European
     for r in XLSX.eachrow(xf["BUS_DC"])
         i = XLSX.row_number(r)
         if i > 1 # compensate for header
-            idx = i - 1
+            idx = r[2]
             European_grid["busdc"]["$idx"] = Dict{String,Any}()
             European_grid["busdc"]["$idx"]["name"] = r[1] #buses_dc_dict[:,1][i]
             European_grid["busdc"]["$idx"]["index"] = r[2] # idx
@@ -397,7 +405,11 @@ function create_european_grid(output_filename::String = "./data_sources/European
             European_grid["storage"]["$idx"] = Dict{String,Any}()
             European_grid["storage"]["$idx"]["index"] = idx
             European_grid["storage"]["$idx"]["country"] = r[3] #hydro_res_dict[:,3][i]
-            European_grid["storage"]["$idx"]["zone"] = r[4] #hydro_res_dict[:,4][i]
+            if r[4] == "DE-LU"   # FIX for Germany, weirdly zone is "DE-LU" in data model, altough country is DE
+                European_grid["storage"]["$idx"]["zone"] = "DE" #hydro_res_dict[:,4][i]
+            else
+                European_grid["storage"]["$idx"]["zone"] = r[4]
+            end
             European_grid["storage"]["$idx"]["storage_bus"] = r[5] #hydro_res_dict[:,5][i]
             European_grid["storage"]["$idx"]["type"] = r[1] #hydro_res_dict[:,1][i]
             European_grid["storage"]["$idx"]["type_tyndp"] = "Reservoir"
@@ -433,7 +445,11 @@ function create_european_grid(output_filename::String = "./data_sources/European
             European_grid["storage"]["$idx"] = Dict{String,Any}()
             European_grid["storage"]["$idx"]["index"] = idx
             European_grid["storage"]["$idx"]["country"] = r[3] #hydro_phs_dict[:,3][i]
-            European_grid["storage"]["$idx"]["zone"] = r[4] #hydro_phs_dict[:,4][i]
+            if r[4] == "DE-LU"   # FIX for Germany, weirdly zone is "DE-LU" in data model, altough country is DE
+                European_grid["storage"]["$idx"]["zone"] = "DE" #hydro_res_dict[:,4][i]
+            else
+                European_grid["storage"]["$idx"]["zone"] = r[4]
+            end
             European_grid["storage"]["$idx"]["storage_bus"] = r[5] #hydro_phs_dict[:,5][i]
             European_grid["storage"]["$idx"]["type"] = r[1] #hydro_phs_dict[:,1][i]
             European_grid["storage"]["$idx"]["type_tyndp"] = "Reservoir"
@@ -441,7 +457,7 @@ function create_european_grid(output_filename::String = "./data_sources/European
             European_grid["storage"]["$idx"]["qs"] = 0.0
             European_grid["storage"]["$idx"]["energy"] = r[8] / European_grid["baseMVA"] / 2
             European_grid["storage"]["$idx"]["energy_rating"] = r[8]/European_grid["baseMVA"]
-            European_grid["storage"]["$idx"]["charge_rating"] =  r[7]/European_grid["baseMVA"]
+            European_grid["storage"]["$idx"]["charge_rating"] =  -r[7]/European_grid["baseMVA"]
             European_grid["storage"]["$idx"]["discharge_rating"] = r[6]/European_grid["baseMVA"] 
             European_grid["storage"]["$idx"]["charge_efficiency"] = 1.0 
             European_grid["storage"]["$idx"]["discharge_efficiency"] = 0.95 
@@ -496,7 +512,6 @@ function create_european_grid(output_filename::String = "./data_sources/European
     # Making sure all the keys for PowerModels are there
     European_grid["source_type"] = deepcopy(test_grid["source_type"])
     European_grid["switch"] = deepcopy(test_grid["switch"])
-    European_grid["storage"] = deepcopy(test_grid["storage"])
     European_grid["shunt"] = deepcopy(test_grid["shunt"])
     European_grid["dcline"] = deepcopy(test_grid["dcline"])
 

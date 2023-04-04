@@ -1,8 +1,3 @@
-
-
-function assign_res()
-end
-
 # This function scales the "pmax" value of each generator based on the installed total capacity coming from the TYNDP data. 
 # tyndp_capacity ::DataFrame - The installed generation capacity coming from the zonal model, per zone and generation type, climate year and scenario
 # grid_data ::Dict{String, Any} - EU grid model
