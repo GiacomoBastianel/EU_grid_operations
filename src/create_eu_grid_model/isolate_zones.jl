@@ -14,6 +14,9 @@ function isolate_zones(grid_data, zones)
     zone_data["branchdc"] = Dict{String, Any}()
     zone_data["busdc"] = Dict{String, Any}()
     zone_data["pst"] = Dict{String, Any}()
+    zone_data["shunt"] = Dict{String, Any}()
+    zone_data["switch"] = Dict{String, Any}()
+    zone_data["dcline"] = Dict{String, Any}()
     for zone in zones
         for (b, bus) in grid_data["bus"]
             if haskey(bus, "zone") && bus["zone"] == zone
@@ -93,7 +96,8 @@ function add_borders!(zone_data, grid_data, zone)
                 end
                 idx = findfirst(xb_zone .== borders)
                 zone_data["borders"]["$idx"]["xb_lines"][b] = branch
-                zone_data["bus"]["$border_bus"] = border_bus
+                b_idx = border_bus["index"]
+                zone_data["bus"]["$b_idx"] = border_bus
                 add_border_gen!(zone_data, border_bus, xb_zone)
             end
         end

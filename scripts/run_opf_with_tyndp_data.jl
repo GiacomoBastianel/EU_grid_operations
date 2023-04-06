@@ -62,7 +62,7 @@ zone_mapping = _EUGO.map_zones()
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
 # (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
-res_and_demand_timeseries = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, zone_mapping)
+res_and_demand_timeseries = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, zone_mapping; zone = "DE")
 
 # Scale generation capacity based on TYNDP data
 _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_mapping)
@@ -72,11 +72,11 @@ zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"])
 # Start runnning hourly OPF calculations
 hour_start_idx = 1 
 hour_end_idx = 24
-EU_grid_hourly = deepcopy(EU_grid)
+zone_grid_hourly = deepcopy(zone_grid)
 
 result = Dict{String, Any}(["$hour" => Dict{String, Any}() for hour in hour_start_idx : hour_end_idx])
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
 for hour_idx in hour_start_idx : hour_end_idx
-    _EUGO.hourly_grid_data!(EU_grid_hourly, EU_grid, hour_idx, res_and_demand_timeseries) # write hourly values into the grid data
-    result["$hour_idx"] = CBAOPF.solve_cbaopf(EU_grid_hourly, DCPPowerModel, Gurobi.Optimizer; setting = s) # solve the OPF 
+    _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, res_and_demand_timeseries) # write hourly values into the grid data
+    result["$hour_idx"] = CBAOPF.solve_cbaopf(zone_grid_hourly, DCPPowerModel, Gurobi.Optimizer; setting = s) # solve the OPF 
 end
