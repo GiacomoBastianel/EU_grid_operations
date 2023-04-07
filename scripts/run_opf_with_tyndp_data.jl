@@ -78,8 +78,7 @@ zone_grid_hourly = deepcopy(zone_grid)
 
 result = Dict{String, Any}(["$hour" => Dict{String, Any}() for hour in hour_start_idx : hour_end_idx])
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
-# for hour_idx in hour_start_idx : hour_end_idx
-    hour_idx = 1
+for hour_idx in hour_start_idx : hour_end_idx
     _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, timeseries_data) # write hourly values into the grid data
     result["$hour_idx"] = CBAOPF.solve_cbaopf(zone_grid_hourly, DCPPowerModel, Gurobi.Optimizer; setting = s) # solve the OPF 
-# end
+end
