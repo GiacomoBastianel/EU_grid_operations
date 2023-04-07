@@ -46,12 +46,11 @@ _EUGO.add_load_and_pst_properties!(EU_grid)
 
 #### LOAD TYNDP SCENARIO DATA ##########
 if load_data == true
-    result, input_data_raw, scenario_data = _EUGO.load_results(scenario, climate_year) # Import zonal results
+    zonal_result, zonal_input, scenario_data = _EUGO.load_results(scenario, climate_year) # Import zonal results
     ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(scenario) # import zonal input (mainly used for cost data)
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
 end
 
-input_data = deepcopy(input_data_raw)
 print("ALL FILES LOADED", "\n")
 print("----------------------","\n")
 ######
@@ -59,15 +58,18 @@ print("----------------------","\n")
 # map EU-Grid zones to TYNDP model zones
 zone_mapping = _EUGO.map_zones()
 
-# create RES time series based on the TYNDP model for 
-# (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
-# (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
-res_and_demand_timeseries = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, zone_mapping; zone = "DE")
-
 # Scale generation capacity based on TYNDP data
 _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_mapping)
 
+# Isolate zone: input is vector of strings
 zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"])
+
+# create RES time series based on the TYNDP model for 
+# (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
+# (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
+timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, zone_mapping; zone = "DE")
+
+push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)) 
 
 # Start runnning hourly OPF calculations
 hour_start_idx = 1 
@@ -76,7 +78,8 @@ zone_grid_hourly = deepcopy(zone_grid)
 
 result = Dict{String, Any}(["$hour" => Dict{String, Any}() for hour in hour_start_idx : hour_end_idx])
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
-for hour_idx in hour_start_idx : hour_end_idx
-    _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, res_and_demand_timeseries) # write hourly values into the grid data
+# for hour_idx in hour_start_idx : hour_end_idx
+    hour_idx = 1
+    _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, timeseries_data) # write hourly values into the grid data
     result["$hour_idx"] = CBAOPF.solve_cbaopf(zone_grid_hourly, DCPPowerModel, Gurobi.Optimizer; setting = s) # solve the OPF 
-end
+# end

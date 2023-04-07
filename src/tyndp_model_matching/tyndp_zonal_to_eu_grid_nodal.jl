@@ -126,7 +126,7 @@ function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scen
     else
         zones = [z for (z, zone) in zone_mapping]
     end
-    res_demand = Dict{String, Any}(
+    timeseries_data = Dict{String, Any}(
     "wind_onshore" => Dict{String, Any}(),
     "wind_offshore" => Dict{String, Any}(),
     "solar_pv" => Dict{String, Any}(),
@@ -135,10 +135,10 @@ function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scen
     print("creating RES time series for zone:" , "\n")
     for zone in zones
         print(zone, "\n")
-        push!(res_demand["wind_onshore"], zone => [])
-        push!(res_demand["wind_offshore"], zone => [])
-        push!(res_demand["solar_pv"], zone => [])
-        push!(res_demand["demand"], zone => [])
+        push!(timeseries_data["wind_onshore"], zone => [])
+        push!(timeseries_data["wind_offshore"], zone => [])
+        push!(timeseries_data["solar_pv"], zone => [])
+        push!(timeseries_data["demand"], zone => [])
 
         if haskey(zone_mapping, zone)
             tyndp_zone = zone_mapping[zone][1]
@@ -146,28 +146,28 @@ function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scen
 
         for i in 1:length(wind_onshore[!,1])
             if wind_onshore[!,1][i] == tyndp_zone
-                push!(res_demand["wind_onshore"][zone], wind_onshore[!,5][i])
+                push!(timeseries_data["wind_onshore"][zone], wind_onshore[!,5][i])
             end
             if wind_offshore[!,1][i] == tyndp_zone
-                push!(res_demand["wind_offshore"][zone], wind_offshore[!,5][i])
+                push!(timeseries_data["wind_offshore"][zone], wind_offshore[!,5][i])
             end
             if pv[!,1][i] == tyndp_zone
-                push!(res_demand["solar_pv"][zone], pv[!,5][i])
+                push!(timeseries_data["solar_pv"][zone], pv[!,5][i])
             end
             if i <= length(scenario_data[tyndp_zone]["demand"])
-                push!(res_demand["demand"][zone], scenario_data[tyndp_zone]["demand"][i] / maximum(scenario_data[tyndp_zone]["demand"]))   
+                push!(timeseries_data["demand"][zone], scenario_data[tyndp_zone]["demand"][i] / maximum(scenario_data[tyndp_zone]["demand"]))   
             end
          end
     end
 
-    return res_demand
+    return timeseries_data
 end
 
 
-function hourly_grid_data!(grid_data, grid_data_orig, hour, res_demand)
+function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     for (l, load) in grid_data["load"]
         zone = load["zone"]
-        load["pd"] =  res_demand["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] 
+        load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] 
         # To Do, fix demand response potential!
         # load["pred_rel_max"] = ts_data["load"][l]["pred_rel_max"][1, hour] 
         # load["cost_red"] = ts_data["load"][l]["cost_red"][1, hour] 
@@ -176,16 +176,46 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, res_demand)
     for (g, gen) in grid_data["gen"]
         zone = gen["zone"]
         if gen["type"] == "Wind Onshore"
-            gen["pg"] =  res_demand["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
-            gen["pmax"] =  res_demand["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+            gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
+            gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
         elseif gen["type"] == "Wind Offshore"
-            gen["pg"] =  res_demand["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-            gen["pmax"] =  res_demand["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+            gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
         elseif gen["type"] == "Solar PV"
-            gen["pg"] =  res_demand["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            gen["pmax"] =  res_demand["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
         end
+    end
+    for (b, border) in grid_data["borders"]
+        border["flow"] = timeseries_data["xb_flows"][border["name"]]["flow"][1, hour]
     end
     return grid_data
 end
 
+
+function get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)
+    zone = zone_grid["zones"][1]
+    borders = Dict{String, Any}()
+    for (b, border) in zone_grid["borders"]
+        borders[border["name"]] = Dict{String, Any}("flow" => zeros(1, length(zonal_result)))
+        if haskey(zone_mapping, border["name"])
+            tyndp_zone_fr = zone_mapping[zone][1]
+            tyndp_zone_to = zone_mapping[border["name"]][1]
+        
+            int_name_fr = join([tyndp_zone_fr,"-",tyndp_zone_to])
+            int_name_to = join([tyndp_zone_to,"-",tyndp_zone_fr])
+            flow = 0
+            for (r, res) in zonal_result
+                for (b, branch) in zonal_input["branch"]
+                    if branch["name"] == int_name_fr
+                        flow = res["solution"]["branch"][b]["pf"]
+                    elseif branch["name"] == int_name_to
+                        flow = res["solution"]["branch"][b]["pt"]
+                    end
+                end
+                borders[border["name"]]["flow"][1, parse(Int, r)] = flow
+            end   
+        end
+     end
+     return borders
+end

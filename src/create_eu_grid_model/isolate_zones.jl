@@ -1,4 +1,4 @@
-function isolate_zones(grid_data, zones)
+function isolate_zones(grid_data, zones; border_slack = 0)
     zone_data = Dict{String, Any}()
     zone_data["zones"] = zones
     zone_data["dcpol"] = grid_data["dcpol"]
@@ -61,7 +61,7 @@ function isolate_zones(grid_data, zones)
                 zone_data["branchdc"][b] = branch
             end
         end
-        add_borders!(zone_data, grid_data, zone)
+        add_borders!(zone_data, grid_data, zone; border_slack = border_slack)
     end
 
 
@@ -70,7 +70,7 @@ function isolate_zones(grid_data, zones)
 end
 
 
-function add_borders!(zone_data, grid_data, zone)
+function add_borders!(zone_data, grid_data, zone; border_slack = 0)
     zone_data["borders"] = Dict{String, Any}()
     borders = []
     
@@ -80,9 +80,11 @@ function add_borders!(zone_data, grid_data, zone)
             t_bus = branch["t_bus"]
             border_buses = [grid_data["bus"]["$f_bus"]["zone"]  !== zone, grid_data["bus"]["$t_bus"]["zone"]  !== zone]
             if findall(border_buses) == 1
-               border_bus = grid_data["bus"]["$f_bus"]   
+               border_bus = grid_data["bus"]["$f_bus"]
+               branch["direction"] = "to"   
             else
                border_bus = grid_data["bus"]["$t_bus"]
+               branch["direction"] = "from" 
             end
             xb_zone = find_xb_zone(grid_data, border_bus, zone)
             if !isempty(xb_zone)
@@ -93,6 +95,7 @@ function add_borders!(zone_data, grid_data, zone)
                     zone_data["borders"]["$idx"]["name"] = xb_zone
                     zone_data["borders"]["$idx"]["xb_lines"] = Dict{String, Any}()
                     zone_data["borders"]["$idx"]["xb_convs"] = Dict{String, Any}()
+                    zone_data["borders"]["$idx"]["slack"] = border_slack
                 end
                 idx = findfirst(xb_zone .== borders)
                 zone_data["borders"]["$idx"]["xb_lines"][b] = branch
@@ -114,6 +117,8 @@ function add_borders!(zone_data, grid_data, zone)
             end
             for (c, convdc) in grid_data["convdc"]
                 if convdc["busdc_i"] == conv_bus
+                    push!(zone_data["convdc"], c => deepcopy(convdc))
+                    push!(zone_data["busdc"], "$conv_bus" => grid_data["busdc"]["$conv_bus"])
                     ac_bus = convdc["busac_i"]
                     xb_zone = grid_data["bus"]["$ac_bus"]["zone"]
                     if !any(xb_zone .== borders)
@@ -123,6 +128,7 @@ function add_borders!(zone_data, grid_data, zone)
                         zone_data["borders"]["$idx"]["name"] = xb_zone
                         zone_data["borders"]["$idx"]["xb_lines"] = Dict{String, Any}()
                         zone_data["borders"]["$idx"]["xb_convs"] = Dict{String, Any}()
+                        zone_data["borders"]["$idx"]["slack"] = border_slack
                     end
                     idx = findfirst(xb_zone .== borders)
                     zone_data["borders"]["$idx"]["xb_convs"][c] = convdc
