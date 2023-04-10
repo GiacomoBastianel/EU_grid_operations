@@ -187,7 +187,12 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         end
     end
     for (b, border) in grid_data["borders"]
-        border["flow"] = timeseries_data["xb_flows"][border["name"]]["flow"][1, hour]
+        flow = timeseries_data["xb_flows"][border["name"]]["flow"][1, hour]
+        if abs(flow) > border["border_cap"]
+            border["flow"] = sign(flow) * border["border_cap"] * 0.95  # to avoid numerical infeasibility & compensate for possible HVDC losses
+        else
+            border["flow"] = flow
+        end
     end
     return grid_data
 end

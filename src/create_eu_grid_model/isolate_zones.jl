@@ -101,7 +101,7 @@ function add_borders!(zone_data, grid_data, zone; border_slack = 0)
                 zone_data["borders"]["$idx"]["xb_lines"][b] = branch
                 b_idx = border_bus["index"]
                 zone_data["bus"]["$b_idx"] = border_bus
-                add_border_gen!(zone_data, border_bus, xb_zone)
+                add_border_gen!(zone_data, b_idx, xb_zone)
             end
         end
     end
@@ -139,6 +139,17 @@ function add_borders!(zone_data, grid_data, zone; border_slack = 0)
         end
     end
 
+    for (bo, border) in zone_data["borders"]
+        border_cap = 0
+        for (b, branch) in border["xb_lines"]
+            border_cap = border_cap + branch["rate_a"]
+        end
+        for (c, conv) in border["xb_convs"]
+            border_cap = border_cap + conv["Pacmax"]
+        end
+        border["border_cap"] = border_cap
+    end
+
     return zone_data
 
 end
@@ -166,11 +177,11 @@ function add_border_gen!(zone_data, border_bus, border_zone)
     zone_data["gen"]["$idx"]["index"] = idx 
     zone_data["gen"]["$idx"]["country"] = border_zone
     zone_data["gen"]["$idx"]["zone"] = border_zone
-    zone_data["gen"]["$idx"]["gen_bus"] = border_bus #gen_hydro_ror_dict[:,5][i]
+    zone_data["gen"]["$idx"]["gen_bus"] = border_bus 
     zone_data["gen"]["$idx"]["type"] = "XB_dummy"
     zone_data["gen"]["$idx"]["type_tyndp"] = "XB_dummy"
-    zone_data["gen"]["$idx"]["pmax"] = 5000 / zone_data["baseMVA"] #gen_hydro_ror_dict[:,6][i]/zone_data["baseMVA"] 
-    zone_data["gen"]["$idx"]["pmin"] = -5000 / zone_data["baseMVA"]
+    zone_data["gen"]["$idx"]["pmax"] = 7000 / zone_data["baseMVA"] 
+    zone_data["gen"]["$idx"]["pmin"] = -7000 / zone_data["baseMVA"]
     zone_data["gen"]["$idx"]["qmax"] =  zone_data["gen"]["$idx"]["pmax"] * 0.5
     zone_data["gen"]["$idx"]["qmin"] = -zone_data["gen"]["$idx"]["pmax"] * 0.5
     zone_data["gen"]["$idx"]["cost"] = [25.0  * zone_data["baseMVA"], 0.0] # Assumption here, to be checked
