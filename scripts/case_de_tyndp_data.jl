@@ -136,49 +136,20 @@ _EUGO.add_dc_branch!(zone_grid_un, dc_bus_idx_bb, dc_bus_idx_gg, power_rating)
 ### Carry out OPF
 # Start runnning hourly OPF calculations
 hour_start_idx = 1 
-hour_end_idx =  200
+hour_end_idx =  720
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
-batch_size = 200
+batch_size = 360
 batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_un)
 
 
-total_cost = 0
-total_cost_un = 0
-i = 1
-# for i in 1:12
-    hs = 1 + (i-1) * batch_size
-    he = hs + batch_size - 1
-    fn = join([output_file_name, "_opf_","$hs","_to_","$he",".json"])
-    res = Dict()
-    open(fn) do f
-        dicttxt = read(f,String)  # file information to string
-        global res = JSON.parse(dicttxt)  # parse and transform data
-    end
-    # for (h, hour) in res
-    #     if isempty(hour["solution"])
-    #         print(h, " -> ", hour["termination_status"],  "\n")
-    #     else
-    #         total_cost = total_cost + hour["objective"]
-    #     end
-    # end
-    fn_un = join([output_file_name_un, "_opf_","$hs","_to_","$he",".json"])
-    res_un = Dict()
-    open(fn_un) do f
-        dicttxt = read(f,String)  # file information to string
-        global res_un = JSON.parse(dicttxt)  # parse and transform data
-    end
-    # for (h, hour) in res_un
-    #     if isempty(hour["solution"])
-    #         print(h, " -> ", hour["termination_status"],  "\n")
-    #     else
-    #         total_cost_un = total_cost_un + hour["objective"]
-    #     end
-    # end
-# # end
+## Load and process results
+result, tc = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, output_file_name)
+result_un, tc_un = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, output_file_name_un)
+print("Total cost = ", tc / 1e6, " MEuro", "\n")
+print("Total cost UN = ", tc_un / 1e6, " MEuro")
 
-# print("Total cost = ", total_cost / 1e6, " MEuro", "\n")
-# print("Total cost UN = ", total_cost_un / 1e6, " MEuro")
+###############
 
 # fn = join([output_file_name, "_opf_","1","_to_","730",".json"])
 # res = Dict()
@@ -201,48 +172,48 @@ i = 1
 # Plots.plot([abs(branch["pf"]) / zone_grid["branch"][b]["rate_a"]  for (b, branch) in res["1"]["solution"]["branch"]])
 # Plots.plot([sum([gen["pg"] for (g, gen) in hour["solution"]["gen"]]) for (h, hour) in res])
 
-curt = zeros(1, length(res))
-curt_un = zeros(1, length(res))
-for (h, hour) in res
-    curt[1, parse(Int, h)] =  sum([load["pcurt"] for (l, load) in res[h]["solution"]["load"]])
-    curt_un[1, parse(Int, h)] = sum([load["pcurt"] for (l, load) in res_un[h]["solution"]["load"]]) 
-end
-Plots.plot(curt[1,:])
-Plots.plot!(curt_un[1,:])
+# curt = zeros(1, length(res))
+# curt_un = zeros(1, length(res))
+# for (h, hour) in res
+#     curt[1, parse(Int, h)] =  sum([load["pcurt"] for (l, load) in res[h]["solution"]["load"]])
+#     curt_un[1, parse(Int, h)] = sum([load["pcurt"] for (l, load) in res_un[h]["solution"]["load"]]) 
+# end
+# Plots.plot(curt[1,:])
+# Plots.plot!(curt_un[1,:])
 
-Plots.plot([hour["solution"]["branchdc"]["100"]["pf"] for (h, hour) in res_un])
-Plots.plot!([hour["solution"]["branchdc"]["99"]["pf"] for (h, hour) in res_un])
+# Plots.plot([hour["solution"]["branchdc"]["100"]["pf"] for (h, hour) in res_un])
+# Plots.plot!([hour["solution"]["branchdc"]["99"]["pf"] for (h, hour) in res_un])
 
-for (l, load) in res["23"]["solution"]["load"]
-    if load["pcurt"] !=0.0
-        print(l, " -> ",load["pcurt"] , "\n")
-    end
-end
+# for (l, load) in res["23"]["solution"]["load"]
+#     if load["pcurt"] !=0.0
+#         print(l, " -> ",load["pcurt"] , "\n")
+#     end
+# end
 
-for (l, load) in res["138"]["solution"]["load"]
-    if load["pcurt"] !=0.0
-        print(l, " -> ",load["pcurt"] , "\n")
-    end
-end
+# for (l, load) in res["138"]["solution"]["load"]
+#     if load["pcurt"] !=0.0
+#         print(l, " -> ",load["pcurt"] , "\n")
+#     end
+# end
 
-for (b, branch) in zone_grid["branch"]
-    if branch["f_bus"] == 1229 || branch["t_bus"] == 1229
-        print(b, " - > ", branch["rate_a"], "\n")
-    end
-end
+# for (b, branch) in zone_grid["branch"]
+#     if branch["f_bus"] == 1229 || branch["t_bus"] == 1229
+#         print(b, " - > ", branch["rate_a"], "\n")
+#     end
+# end
 
 
-zone_grid_hourly = deepcopy(zone_grid)
-_EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, 138, timeseries_data)
-_EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, 23, timeseries_data)
+# zone_grid_hourly = deepcopy(zone_grid)
+# _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, 138, timeseries_data)
+# _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, 23, timeseries_data)
 
-g_cap = 0
-for (g, gen) in zone_grid_hourly["gen"]
-    if gen["type"] !== "XB_dummy"
-        g_cap = g_cap + gen["pmax"]
-    end
-end
-print(g_cap, " ", sum([load["pd"] for (l, load) in zone_grid_hourly["load"]]))
+# g_cap = 0
+# for (g, gen) in zone_grid_hourly["gen"]
+#     if gen["type"] !== "XB_dummy"
+#         g_cap = g_cap + gen["pmax"]
+#     end
+# end
+# print(g_cap, " ", sum([load["pd"] for (l, load) in zone_grid_hourly["load"]]))
 
 
 
