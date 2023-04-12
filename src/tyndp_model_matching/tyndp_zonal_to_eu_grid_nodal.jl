@@ -35,7 +35,7 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
         if zonal_tyndp_capacity !=0
             for (z, zone_) in grid_data["zonal_generation_capacity"]
                 if zone_["zone"] == zone
-                    scaling_factor = zone_[type] / (zonal_tyndp_capacity / grid_data["baseMVA"])
+                    scaling_factor = (zonal_tyndp_capacity / grid_data["baseMVA"]) / zone_[type]
                     gen["pmax"] = gen["pmax"] * scaling_factor
                 end
             end
@@ -130,7 +130,8 @@ function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scen
     "wind_onshore" => Dict{String, Any}(),
     "wind_offshore" => Dict{String, Any}(),
     "solar_pv" => Dict{String, Any}(),
-    "demand" => Dict{String, Any}())
+    "demand" => Dict{String, Any}(),
+    "max_demand" => Dict{String, Any}())
 
     print("creating RES time series for zone:" , "\n")
     for zone in zones
@@ -139,6 +140,7 @@ function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scen
         push!(timeseries_data["wind_offshore"], zone => [])
         push!(timeseries_data["solar_pv"], zone => [])
         push!(timeseries_data["demand"], zone => [])
+        push!(timeseries_data["max_demand"], zone => [])
 
         if haskey(zone_mapping, zone)
             tyndp_zone = zone_mapping[zone][1]
@@ -158,6 +160,7 @@ function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scen
                 push!(timeseries_data["demand"][zone], scenario_data[tyndp_zone]["demand"][i] / maximum(scenario_data[tyndp_zone]["demand"]))   
             end
          end
+         timeseries_data["max_demand"][zone] = maximum(scenario_data[tyndp_zone]["demand"])
     end
 
     return timeseries_data
@@ -167,21 +170,18 @@ end
 function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     for (l, load) in grid_data["load"]
         zone = load["zone"]
-        load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] 
-        # To Do, fix demand response potential!
-        # load["pred_rel_max"] = ts_data["load"][l]["pred_rel_max"][1, hour] 
-        # load["cost_red"] = ts_data["load"][l]["cost_red"][1, hour] 
-        # load["cost_curt"] = ts_data["load"][l]["cost_curt"][1, hour]
+        ratio = (timeseries_data["max_demand"][zone] / grid_data["baseMVA"]) / load["country_peak_load"]
+        load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
     end
     for (g, gen) in grid_data["gen"]
         zone = gen["zone"]
-        if gen["type"] == "Wind Onshore"
+        if gen["type_tyndp"] == "Onshore Wind"
             gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
             gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-        elseif gen["type"] == "Wind Offshore"
+        elseif gen["type_tyndp"] == "Offshore Wind"
             gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
             gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-        elseif gen["type"] == "Solar PV"
+        elseif gen["type_tyndp"] == "Solar PV"
             gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
             gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
         end
@@ -223,4 +223,37 @@ function get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)
         end
      end
      return borders
+end
+
+function get_demand_reponse!(zone_grid, zonal_input, zone_mapping, timeseries_data; cost = 140)
+    zone = zone_grid["zones"][1]
+    tyndp_zone = zone_mapping[zone][1]
+
+    print(tyndp_zone)
+    dr_ratio = 0
+    for (g, gen) in zonal_input["gen"]
+        if gen["node"] == tyndp_zone && gen["type"] == "DSR"
+            print(g)
+            dr_ratio = gen["pmax"] / (timeseries_data["max_demand"][zone] / zone_grid["baseMVA"])
+        end
+    end
+    for (l, load) in zone_grid["load"]
+        load["pred_rel_max"] = dr_ratio
+        load["cost_red"] = cost * zone_grid["baseMVA"] 
+    end
+    return zone_grid
+end
+
+function fix_data!(grid_data)
+
+    for (b, branch) in grid_data["branch"]
+        b_b = imag(1 / (branch["br_r"] + branch["br_x"]im))
+        theta_max = branch["rate_a"] / b_b
+        if theta_max > pi || theta_max < -pi
+            print("Updating rate_a of branch ", b, " due to high reactance.", "\n")
+            branch["rate_a"] = abs(pi * b_b)
+        end
+    end
+
+    return grid_data
 end

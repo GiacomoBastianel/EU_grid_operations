@@ -398,113 +398,113 @@ function determine_total_xb_flow!(input_data, grid_data, grid_data_raw, result, 
 end
     
     
-function fix_data!(grid_data; fix_borders = false, min_branch_rating = nothing, max_branch_rating = 99, gen_slack = 0, all_lines_on = false, border_slack = nothing)
+# function fix_data!(grid_data; fix_borders = false, min_branch_rating = nothing, max_branch_rating = 99, gen_slack = 0, all_lines_on = false, border_slack = nothing)
 
-    # add dummy ratings for branches with no rating:
-    for (b, branch) in grid_data["branch"]
-        # add dummy ratings for branches with no rating:
-        # if the length of the branch is 0 -> mostly breakers 
-        if branch["source_id"][1] == "branch" && branch["len"] == 0
-            branch["rate_a"] = max_branch_rating
-            branch["rate_b"] = max_branch_rating
-            branch["rate_c"] = max_branch_rating
-        elseif !haskey(branch, "rate_a") || branch["rate_a"] == 0
-            branch["rate_a"] = max_branch_rating
-            branch["rate_b"] = max_branch_rating
-            branch["rate_c"] = max_branch_rating
-        end
-        if !isnothing(min_branch_rating)
-            branch["rate_a"] = max(branch["rate_a"], min_branch_rating)
-            branch["rate_b"] = max(branch["rate_a"], min_branch_rating)
-            branch["rate_c"] = max(branch["rate_a"], min_branch_rating)
-        end
-        # Limit branch ratings to 0.9 pu to account for AC vas DC load branch_flows
-        branch["rate_a"] = branch["rate_a"] * 0.9
-        branch["rate_b"] = branch["rate_a"] * 0.9
-        branch["rate_c"] = branch["rate_a"] * 0.9
-        branch["br_x"] = max(1e-5, abs(branch["br_x"]))
-        branch["br_r"] = abs(branch["br_r"])
-    end
+#     # add dummy ratings for branches with no rating:
+#     for (b, branch) in grid_data["branch"]
+#         # add dummy ratings for branches with no rating:
+#         # if the length of the branch is 0 -> mostly breakers 
+#         if branch["source_id"][1] == "branch" && branch["len"] == 0
+#             branch["rate_a"] = max_branch_rating
+#             branch["rate_b"] = max_branch_rating
+#             branch["rate_c"] = max_branch_rating
+#         elseif !haskey(branch, "rate_a") || branch["rate_a"] == 0
+#             branch["rate_a"] = max_branch_rating
+#             branch["rate_b"] = max_branch_rating
+#             branch["rate_c"] = max_branch_rating
+#         end
+#         if !isnothing(min_branch_rating)
+#             branch["rate_a"] = max(branch["rate_a"], min_branch_rating)
+#             branch["rate_b"] = max(branch["rate_a"], min_branch_rating)
+#             branch["rate_c"] = max(branch["rate_a"], min_branch_rating)
+#         end
+#         # Limit branch ratings to 0.9 pu to account for AC vas DC load branch_flows
+#         branch["rate_a"] = branch["rate_a"] * 0.9
+#         branch["rate_b"] = branch["rate_a"] * 0.9
+#         branch["rate_c"] = branch["rate_a"] * 0.9
+#         branch["br_x"] = max(1e-5, abs(branch["br_x"]))
+#         branch["br_r"] = abs(branch["br_r"])
+#     end
 
-    if all_lines_on == true
-        for (b, branch) in grid_data["branch"]
-            state = 1
-            for (bo, border) in grid_data["borders"]
-                for (l, xb_line) in border["xb_lines"]
-                    if xb_line["index"] == parse(Int, b)
-                        state = xb_line["br_status"]
-                    end
-                end
-            end
-            branch["br_status"] = min(1, state)
-        end
-    end
+#     if all_lines_on == true
+#         for (b, branch) in grid_data["branch"]
+#             state = 1
+#             for (bo, border) in grid_data["borders"]
+#                 for (l, xb_line) in border["xb_lines"]
+#                     if xb_line["index"] == parse(Int, b)
+#                         state = xb_line["br_status"]
+#                     end
+#                 end
+#             end
+#             branch["br_status"] = min(1, state)
+#         end
+#     end
 
-    for (g, gen) in grid_data["gen"]
-        # if gen["pmin"] > 0 
-        #     gen["pmin"] = 0
-        # end
-        gen["pmin"] = 0
-        #gen["pmax"] = max(gen["pmax"], gen["pg"] + gen_slack)
-        # if  gen["pg"] < 0
-        #     gen["pmin"] = gen["pg"] #- gen_slack
-        # end
-    end
+#     for (g, gen) in grid_data["gen"]
+#         # if gen["pmin"] > 0 
+#         #     gen["pmin"] = 0
+#         # end
+#         gen["pmin"] = 0
+#         #gen["pmax"] = max(gen["pmax"], gen["pg"] + gen_slack)
+#         # if  gen["pg"] < 0
+#         #     gen["pmin"] = gen["pg"] #- gen_slack
+#         # end
+#     end
 
-    for (l, load) in grid_data["load"]
-        load["pred_rel_max"]  = 0
-        load["cost_red"] = 0
-        load["cost_curt"]  = 0
-        load["flex"] = 1
-    end
-    if fix_borders == true
-    #et ratings of XB generators to 99.99 pu, if data is bad.....
-        for (bo, border) in grid_data["borders"]
-            xb_nodes = border["xb_nodes"]
-            xb_bus = []
-            for (b, bus) in grid_data["bus"]
-                if any(bus["name"] .== xb_nodes)
-                    xb_bus= push!(xb_bus, bus["index"])
-                end
-            end 
-            for xb_bus_ in xb_bus
-                for (g, gen) in grid_data["gen"]
-                    if (gen["gen_bus"] == xb_bus_) && (xb_bus_ !=0)
-                        gen["pmax"] = 99.99
-                        gen["pmin"] = -99.99
-                        gen["gen_status"] = 1
-                    end
-                end
-            end
-            if !isnothing(border_slack)
-                border["slack"] = border_slack
-            else
-                border["slack"] = 0
-            end
-            for (b, bus) in grid_data["bus"]
-                if any(bus["name"] .== xb_nodes)
-                    for (l, load) in grid_data["load"]
-                        if bus["index"] == load["load_bus"]
-                            load["pd"] = 0
-                            load["qd"] = 0
-                        end
-                    end
-                end
-            end 
-        end
-    end
+#     for (l, load) in grid_data["load"]
+#         load["pred_rel_max"]  = 0
+#         load["cost_red"] = 0
+#         load["cost_curt"]  = 0
+#         load["flex"] = 1
+#     end
+#     if fix_borders == true
+#     #et ratings of XB generators to 99.99 pu, if data is bad.....
+#         for (bo, border) in grid_data["borders"]
+#             xb_nodes = border["xb_nodes"]
+#             xb_bus = []
+#             for (b, bus) in grid_data["bus"]
+#                 if any(bus["name"] .== xb_nodes)
+#                     xb_bus= push!(xb_bus, bus["index"])
+#                 end
+#             end 
+#             for xb_bus_ in xb_bus
+#                 for (g, gen) in grid_data["gen"]
+#                     if (gen["gen_bus"] == xb_bus_) && (xb_bus_ !=0)
+#                         gen["pmax"] = 99.99
+#                         gen["pmin"] = -99.99
+#                         gen["gen_status"] = 1
+#                     end
+#                 end
+#             end
+#             if !isnothing(border_slack)
+#                 border["slack"] = border_slack
+#             else
+#                 border["slack"] = 0
+#             end
+#             for (b, bus) in grid_data["bus"]
+#                 if any(bus["name"] .== xb_nodes)
+#                     for (l, load) in grid_data["load"]
+#                         if bus["index"] == load["load_bus"]
+#                             load["pd"] = 0
+#                             load["qd"] = 0
+#                         end
+#                     end
+#                 end
+#             end 
+#         end
+#     end
 
-    for (g, gen) in grid_data["gen"]
-        if gen["pmin"] > gen["pmax"]
-            print(g, "\n")
-        end
-        if gen["pmax"] == 99.99 && gen["pmin"] == -99.99
-            gen["cost"][1] = 150.0
-        end
-    end
+#     for (g, gen) in grid_data["gen"]
+#         if gen["pmin"] > gen["pmax"]
+#             print(g, "\n")
+#         end
+#         if gen["pmax"] == 99.99 && gen["pmin"] == -99.99
+#             gen["cost"][1] = 150.0
+#         end
+#     end
 
-    return grid_data
-end
+#     return grid_data
+# end
 
 
 function prepare_redispatch_data(opf_result, grid_data, hour; contingency = nothing, rd_cost_factor = 4, inertia_limit = nothing, zonal_input = nothing, zonal_result = nothing, zone = nothing, border_slack = nothing)

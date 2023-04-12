@@ -17,6 +17,7 @@ function isolate_zones(grid_data, zones; border_slack = 0)
     zone_data["shunt"] = Dict{String, Any}()
     zone_data["switch"] = Dict{String, Any}()
     zone_data["dcline"] = Dict{String, Any}()
+    zone_data["zonal_peak_demand"] = 0
     for zone in zones
         for (b, bus) in grid_data["bus"]
             if haskey(bus, "zone") && bus["zone"] == zone
@@ -61,6 +62,12 @@ function isolate_zones(grid_data, zones; border_slack = 0)
                 zone_data["branchdc"][b] = branch
             end
         end
+
+        # for (z, zone_) in grid_data["zonal_peak_demand"]
+        #     if zone_["zone"] == zone
+        #         zone_data["zonal_peak_demand"] = zone_data["zonal_peak_demand"] + zone_["demand"]
+        #     end
+        # end
         add_borders!(zone_data, grid_data, zone; border_slack = border_slack)
     end
 
