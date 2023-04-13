@@ -35,7 +35,7 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
         if zonal_tyndp_capacity !=0
             for (z, zone_) in grid_data["zonal_generation_capacity"]
                 if zone_["zone"] == zone
-                    scaling_factor = (zonal_tyndp_capacity / grid_data["baseMVA"]) / zone_[type]
+                    scaling_factor = max(1, (zonal_tyndp_capacity / grid_data["baseMVA"] / zone_[type]) )
                     gen["pmax"] = gen["pmax"] * scaling_factor
                 end
             end
@@ -120,7 +120,7 @@ function map_zones()
 end
 
 
-function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, zone_mapping; zone = nothing)
+function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zone = nothing)
     if !isnothing(zone)
         zones = [zone]
     else
@@ -146,16 +146,17 @@ function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scen
             tyndp_zone = zone_mapping[zone][1]
         end
 
+
+        wind_series_onshore = wind_onshore[wind_onshore[!, "area"] .== tyndp_zone, climate_year]
+        timeseries_data["wind_onshore"][zone] = wind_series_onshore
+
+        wind_series_offshore = wind_offshore[wind_offshore[!, "area"] .== tyndp_zone, climate_year]
+        timeseries_data["wind_offshore"][zone] = wind_series_offshore
+
+        pv_series = pv[pv[!, "area"] .== tyndp_zone, climate_year]
+        timeseries_data["solar_pv"][zone] = pv_series
+
         for i in 1:length(wind_onshore[!,1])
-            if wind_onshore[!,1][i] == tyndp_zone
-                push!(timeseries_data["wind_onshore"][zone], wind_onshore[!,5][i])
-            end
-            if wind_offshore[!,1][i] == tyndp_zone
-                push!(timeseries_data["wind_offshore"][zone], wind_offshore[!,5][i])
-            end
-            if pv[!,1][i] == tyndp_zone
-                push!(timeseries_data["solar_pv"][zone], pv[!,5][i])
-            end
             if i <= length(scenario_data[tyndp_zone]["demand"])
                 push!(timeseries_data["demand"][zone], scenario_data[tyndp_zone]["demand"][i] / maximum(scenario_data[tyndp_zone]["demand"]))   
             end
@@ -228,12 +229,9 @@ end
 function get_demand_reponse!(zone_grid, zonal_input, zone_mapping, timeseries_data; cost = 140)
     zone = zone_grid["zones"][1]
     tyndp_zone = zone_mapping[zone][1]
-
-    print(tyndp_zone)
     dr_ratio = 0
     for (g, gen) in zonal_input["gen"]
         if gen["node"] == tyndp_zone && gen["type"] == "DSR"
-            print(g)
             dr_ratio = gen["pmax"] / (timeseries_data["max_demand"][zone] / zone_grid["baseMVA"])
         end
     end

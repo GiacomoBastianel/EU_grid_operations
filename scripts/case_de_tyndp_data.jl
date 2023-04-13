@@ -55,10 +55,8 @@ if load_data == true
     ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(scenario) # import zonal input (mainly used for cost data)
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
 end
-
 print("ALL FILES LOADED", "\n")
 print("----------------------","\n")
-####################
 
 # map EU-Grid zones to TYNDP model zones
 zone_mapping = _EUGO.map_zones()
@@ -75,7 +73,7 @@ zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = 0.02)
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
 # (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
-timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, zone_mapping; zone = "DE")
+timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zone = "DE")
 
 # Determine hourly cross-border flows and add them to time series data
 push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)) 
@@ -83,14 +81,20 @@ push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result,
 # Determine demand response potential and add them to zone_grid. Default cost value = 140 Euro / MWh, can be changed with get_demand_reponse!(...; cost = xx)
 _EUGO.get_demand_reponse!(zone_grid, zonal_input, zone_mapping, timeseries_data)
 
+
+# There is no internal congestion as many of the lines are 5000 MVA, limit the lines....
 for (b, branch) in zone_grid["branch"]
     branch["angmin"] = -pi
     branch["angmax"] = pi
-    # if branch["rate_a"] == 50
-    #     branch["rate_a"] = 20
-    # end
+    if branch["rate_a"] >= 49.9
+        branch["rate_a"] = 15
+        branch["rate_b"] = 15
+        branch["rate_c"] = 15
+    end
 end
 
+
+###################
 #####  Adding Ultranet MTDC
 
 # AC bus loactions: A-North: Emden Ost -> Osterath, Ultranet: Osterath -> Phillipsburg
@@ -124,32 +128,104 @@ _EUGO.add_dc_branch!(zone_grid_un, dc_bus_idx_os, dc_bus_idx_ph, power_rating)
 ########### Sued link:
 # Brunsbuettel: 53.9160355330674, 9.235429411946734
 # Grossgartach: 49.1424721420109, 9.149063227242355
-zone_grid_un, dc_bus_idx_bb = _EUGO.add_dc_bus!(zone_grid_un, dc_voltage; lat = 53.9160355330674, lon = 9.235429411946734)
-ac_bus_idx = _EUGO.find_closest_bus(zone_grid_un, 53.9160355330674, 9.235429411946734)
-_EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_bb, power_rating)
-zone_grid_un, dc_bus_idx_gg = _EUGO.add_dc_bus!(zone_grid_un, dc_voltage; lat = 49.1424721420109, lon = 9.149063227242355)
-ac_bus_idx = _EUGO.find_closest_bus(zone_grid_un, 49.1424721420109, 9.149063227242355)
-_EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_gg, power_rating)
-_EUGO.add_dc_branch!(zone_grid_un, dc_bus_idx_bb, dc_bus_idx_gg, power_rating)
+# zone_grid_un, dc_bus_idx_bb = _EUGO.add_dc_bus!(zone_grid_un, dc_voltage; lat = 53.9160355330674, lon = 9.235429411946734)
+# ac_bus_idx = _EUGO.find_closest_bus(zone_grid_un, 53.9160355330674, 9.235429411946734)
+# _EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_bb, power_rating)
+# zone_grid_un, dc_bus_idx_gg = _EUGO.add_dc_bus!(zone_grid_un, dc_voltage; lat = 49.1424721420109, lon = 9.149063227242355)
+# ac_bus_idx = _EUGO.find_closest_bus(zone_grid_un, 49.1424721420109, 9.149063227242355)
+# _EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_gg, power_rating)
+# _EUGO.add_dc_branch!(zone_grid_un, dc_bus_idx_bb, dc_bus_idx_gg, power_rating)
 
 
 ### Carry out OPF
 # Start runnning hourly OPF calculations
 hour_start_idx = 1 
-hour_end_idx =  720
+hour_end_idx =  8760
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
-batch_size = 360
+batch_size = 730
 batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_un)
 
 
 ## Load and process results
-result, tc = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, output_file_name)
-result_un, tc_un = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, output_file_name_un)
-print("Total cost = ", tc / 1e6, " MEuro", "\n")
-print("Total cost UN = ", tc_un / 1e6, " MEuro")
+result, result_con = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, output_file_name)
+result_un, result_con_un = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, output_file_name_un)
+print("Total cost = ", result_con["total_cost"] / 1e6, " MEuro", "\n")
+print("Total cost UN = ", result_con_un["total_cost"] / 1e6, " MEuro")
+
+Plots.plot([result_con["load_shedding"]["$k"] for k in hour_start_idx:hour_end_idx])
+Plots.plot!([result_con_un["load_shedding"]["$k"] for k in hour_start_idx:hour_end_idx])
 
 ###############
+
+
+#################
+# zone_grid_hourly = deepcopy(zone_grid)
+# demand = zeros(1, batch_size)
+# pmax = zeros(1, batch_size)
+# h = 209 # 
+# for h in hour_start_idx:hour_end_idx
+#     _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, h, timeseries_data) 
+#     demand[1, h] = sum([load["pd"] for (l, load) in zone_grid_hourly["load"]])
+#     pmax_ = 0
+#     for (g, gen) in zone_grid_hourly["gen"]
+#         if gen["pmax"] != 70.0
+#             pmax_ = pmax_ + gen["pmax"]
+#         end
+#     end
+#     pmax[1, h] = pmax_
+# end 
+# Plots.plot(demand')
+# Plots.plot!(pmax')
+
+# ofw = 0
+# onw = 0
+# ofw_max = 0
+# onw_max = 0
+# for (g, gen) in zone_grid_hourly["gen"]
+#     if gen["type_tyndp"] == "Onshore Wind"
+#         onw = onw + gen["pmax"]
+#         onw_max = onw_max + zone_grid["gen"][g]["pmax"]
+#     elseif gen["type_tyndp"] == "Offshore Wind"
+#         ofw = ofw + gen["pmax"]
+#         ofw_max = ofw_max + zone_grid["gen"][g]["pmax"]
+#     end
+# end
+
+
+# gen_188_zonal = 0
+# for (g, gen) in zonal_result["188"]["solution"]["gen"]
+#     if zonal_input["gen"][g]["node"] == "DE00"
+#         gen_188_zonal = gen_188_zonal + gen["pg"]
+#         if zonal_input["gen"][g]["type"] == "ENS"
+#             print(gen["pg"],"\n")
+#         end
+#     end
+# end
+# print(gen_188_zonal, "\n")
+
+# exp = 0
+# imp = 0
+# for (b, branch) in zonal_result["188"]["solution"]["branch"]
+#     if zonal_input["branch"][b]["f_bus"] == 9
+#         exp = exp + branch["pf"]
+#         print("Export: ", branch["pf"], "\n")
+#     elseif zonal_input["branch"][b]["t_bus"] == 9 
+#         print("Import: ", branch["pf"], "\n")
+#         imp = imp + branch["pf"]
+#     end
+# end
+
+
+
+# fn = join([output_file_name, "_opf_","$hour_start_idx","_to_","$hour_end_idx",".json"])
+# res = Dict{String, Any}()
+# open(fn) do f
+#     dicttxt = read(f,String)  # file information to string
+#     global res = JSON.parse(dicttxt)  # parse and transform data
+# end
+
+
 
 # fn = join([output_file_name, "_opf_","1","_to_","730",".json"])
 # res = Dict()

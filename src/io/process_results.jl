@@ -1,9 +1,9 @@
 function process_results(hour_start, hour_end, batch_size, file_name::String)
     iterations = Int(hour_end - hour_start + 1) /batch_size
 
-    result= Dict{String, Any}(["$i" => Dict{String, Any}() for i in 1:(hour_end - hour_start + 1)])
+    result= Dict{String, Any}(["$i" => Dict{String, Any}() for i in hour_start:hour_end])
     for i in 1:iterations
-        hs = Int(1 + (i-1) * batch_size)
+        hs = Int(hour_start + (i-1) * batch_size)
         he = Int(hs + batch_size - 1)
         fn = join([file_name, "_opf_","$hs","_to_","$he",".json"])
         res = Dict{String, Any}()
@@ -17,13 +17,17 @@ function process_results(hour_start, hour_end, batch_size, file_name::String)
         end
     end
 
-    total_costs_ = zeros(1, length(result))
+    total_costs_ = Dict{String, Any}()
+    load_shedding = Dict{String, Any}()
     for (h, hour) in result
         if !isempty(hour["solution"])
-            total_costs_[1, parse(Int, h)] = hour["objective"]
+            total_costs_[h] = hour["objective"]
+            load_shedding[h] = sum([load["pcurt"] for (l, load) in hour["solution"]["load"]])
         end
     end
 
-    total_costs = sum(total_costs_)
-    return result, total_costs
+    result_con = Dict{String, Any}() 
+    result_con["total_cost"] = sum([cost for (c, cost) in total_costs_])
+    result_con["load_shedding"] = load_shedding
+    return result, result_con
 end
