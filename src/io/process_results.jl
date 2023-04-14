@@ -48,7 +48,7 @@ function calculate_hourly_indicators(result, grid_data, timeseries_data)
 end
 
 function get_res_generation(result, grid_data, hour)
-    res_gen = 0
+    res_gen = 0.0
     if haskey(result[hour]["solution"], "gen")
         for (g, gen) in result[hour]["solution"]["gen"]
             type = grid_data["gen"][g]["type_tyndp"]

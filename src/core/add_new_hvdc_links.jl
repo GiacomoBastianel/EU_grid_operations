@@ -1,3 +1,46 @@
+function add_hvdc_links(grid_data, links)
+
+    # AC bus loactions: A-North: Emden Ost -> Osterath, Ultranet: Osterath -> Phillipsburg
+    # Rating: 2 GW, 525 kV
+    # Emden Ost: lat: 53.355716, lon: 7.244506
+    # Osterath: lat: 51.26027036315153, lon: 6.627044464872153
+    # Phillipsburg: lat: 49.255371 lon: 8.438422
+    power_rating = 20.0
+    dc_voltage = 525
+    grid_data_inv = deepcopy(grid_data)
+    for (key, link) in links
+        if key == "Ultranet"
+            # Conenction Emden Ost, Osterath first
+            # First Step: ADD dc bus & converter in Emden Ost
+            grid_data_inv, dc_bus_idx_em = add_dc_bus!(grid_data_inv, dc_voltage; lat = 53.355716, lon = 7.244506)
+            ac_bus_idx = find_closest_bus(grid_data_inv, 53.355716, 7.244506)
+            add_converter!(grid_data_inv, ac_bus_idx, dc_bus_idx_em, power_rating)
+            # Second step: ADD dc bus & converter in Osterath and DC branch Emden -> Osterath
+            grid_data_inv, dc_bus_idx_os = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.26027036315153, lon = 6.627044464872153)
+            ac_bus_idx = find_closest_bus(grid_data_inv, 51.26027036315153, 6.627044464872153)
+            add_converter!(grid_data_inv, ac_bus_idx, dc_bus_idx_os, power_rating)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_em, dc_bus_idx_os, power_rating)
+            # Third step add dc bus and converter in Phillipsburg & branch Osterath - Phillipsburg
+            grid_data_inv, dc_bus_idx_ph = add_dc_bus!(grid_data_inv, dc_voltage; lat = 49.255371, lon = 8.438422)
+            ac_bus_idx = find_closest_bus(grid_data_inv, 49.255371, 8.438422)
+            add_converter!(grid_data_inv, ac_bus_idx, dc_bus_idx_ph, power_rating)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_os, dc_bus_idx_ph, power_rating)
+        elseif key == "Suedlink"
+            # Brunsbuettel: 53.9160355330674, 9.235429411946734
+            # Grossgartach: 49.1424721420109, 9.149063227242355
+            grid_data_inv, dc_bus_idx_bb = add_dc_bus!(grid_data_inv, dc_voltage; lat = 53.9160355330674, lon = 9.235429411946734)
+            ac_bus_idx = find_closest_bus(grid_data_inv, 53.9160355330674, 9.235429411946734)
+            add_converter!(grid_data_inv, ac_bus_idx, dc_bus_idx_bb, power_rating)
+            grid_data_inv, dc_bus_idx_gg = add_dc_bus!(grid_data_inv, dc_voltage; lat = 49.1424721420109, lon = 9.149063227242355)
+            ac_bus_idx = find_closest_bus(grid_data_inv, 49.1424721420109, 9.149063227242355)
+            add_converter!(grid_data_inv, ac_bus_idx, dc_bus_idx_gg, power_rating)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_bb, dc_bus_idx_gg, power_rating)
+        elseif key == "Suedostlink" 
+        end
+    end
+    return grid_data_inv
+end
+
 function find_closest_bus(grid_data, lat, lon)
     bus_lat_lon = zeros(length(grid_data["bus"]), 3)
     idx = 1
