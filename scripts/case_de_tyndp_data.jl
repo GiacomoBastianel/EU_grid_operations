@@ -21,7 +21,7 @@ import ExcelFiles; const _EF = ExcelFiles
 import Feather
 using XLSX
 using Statistics
-using Clustering
+import Clustering
 using StatsBase
 import StatsPlots
 
