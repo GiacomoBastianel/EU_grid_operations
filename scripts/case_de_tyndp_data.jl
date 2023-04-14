@@ -29,7 +29,7 @@ import StatsPlots
 scenario = "GA2030"
 climate_year = "2007"
 load_data = true
-use_case = "de_hvdc_backbone"
+use_case = "de_hvdc_sl_un"
 only_hvdc_case = false
 links = Dict("Ultranet" => [], "Suedostlink" => [] , "Suedlink" => [])
 zone = "DE00"
@@ -68,7 +68,7 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 _EUGO.fix_data!(EU_grid)
 
 # Isolate zone: input is vector of strings
-zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = 0.02)
+zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = 0.01)
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
@@ -86,13 +86,14 @@ _EUGO.get_demand_reponse!(zone_grid, zonal_input, zone_mapping, timeseries_data)
 for (b, branch) in zone_grid["branch"]
     branch["angmin"] = -pi
     branch["angmax"] = pi
-    if branch["rate_a"] >= 49.9
-        branch["rate_a"] = 15
-        branch["rate_b"] = 15
-        branch["rate_c"] = 15
+    for (bo, border) in zone_grid["borders"]
+        if branch["rate_a"] >= 49.9 && !haskey(border["xb_lines"], b)
+            branch["rate_a"] = 15
+            branch["rate_b"] = 15
+            branch["rate_c"] = 15
+        end
     end
 end
-
 
 ###################
 #####  Adding Ultranet MTDC
@@ -125,24 +126,24 @@ _EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_ph, power_rating)
 _EUGO.add_dc_branch!(zone_grid_un, dc_bus_idx_os, dc_bus_idx_ph, power_rating)
 
 
-########### Sued link:
+########## Sued link:
 # Brunsbuettel: 53.9160355330674, 9.235429411946734
 # Grossgartach: 49.1424721420109, 9.149063227242355
-# zone_grid_un, dc_bus_idx_bb = _EUGO.add_dc_bus!(zone_grid_un, dc_voltage; lat = 53.9160355330674, lon = 9.235429411946734)
-# ac_bus_idx = _EUGO.find_closest_bus(zone_grid_un, 53.9160355330674, 9.235429411946734)
-# _EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_bb, power_rating)
-# zone_grid_un, dc_bus_idx_gg = _EUGO.add_dc_bus!(zone_grid_un, dc_voltage; lat = 49.1424721420109, lon = 9.149063227242355)
-# ac_bus_idx = _EUGO.find_closest_bus(zone_grid_un, 49.1424721420109, 9.149063227242355)
-# _EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_gg, power_rating)
-# _EUGO.add_dc_branch!(zone_grid_un, dc_bus_idx_bb, dc_bus_idx_gg, power_rating)
+zone_grid_un, dc_bus_idx_bb = _EUGO.add_dc_bus!(zone_grid_un, dc_voltage; lat = 53.9160355330674, lon = 9.235429411946734)
+ac_bus_idx = _EUGO.find_closest_bus(zone_grid_un, 53.9160355330674, 9.235429411946734)
+_EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_bb, power_rating)
+zone_grid_un, dc_bus_idx_gg = _EUGO.add_dc_bus!(zone_grid_un, dc_voltage; lat = 49.1424721420109, lon = 9.149063227242355)
+ac_bus_idx = _EUGO.find_closest_bus(zone_grid_un, 49.1424721420109, 9.149063227242355)
+_EUGO.add_converter!(zone_grid_un, ac_bus_idx, dc_bus_idx_gg, power_rating)
+_EUGO.add_dc_branch!(zone_grid_un, dc_bus_idx_bb, dc_bus_idx_gg, power_rating)
 
 
 ### Carry out OPF
 # Start runnning hourly OPF calculations
 hour_start_idx = 1 
-hour_end_idx =  8760
+hour_end_idx =  365
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
-batch_size = 730
+batch_size = 365
 batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_un)
 
@@ -153,11 +154,65 @@ result_un, result_con_un = _EUGO.process_results(hour_start_idx, hour_end_idx, b
 print("Total cost = ", result_con["total_cost"] / 1e6, " MEuro", "\n")
 print("Total cost UN = ", result_con_un["total_cost"] / 1e6, " MEuro")
 
-Plots.plot([result_con["load_shedding"]["$k"] for k in hour_start_idx:hour_end_idx])
-Plots.plot!([result_con_un["load_shedding"]["$k"] for k in hour_start_idx:hour_end_idx])
+Plots.plot([result_con["load_shedding"]["$k"] for k in sort(parse.(Int,collect(keys(result_con["load_shedding"]))))])
+Plots.plot!([result_con_un["load_shedding"]["$k"] for k in sort(parse.(Int,collect(keys(result_con_un["load_shedding"]))))])
+
+
+hourly_indicators = _EUGO.calculate_hourly_indicators(result, zone_grid, timeseries_data)
+clusters = _EUGO.res_demand_clustering(hourly_indicators, number_of_clusters)
+
 
 ###############
+# Redispatch OPF
+zone_grid_hourly = deepcopy(zone_grid)
+hours = collect(1:2)
+delta_rd_cost = Dict{String, Any}()
+for hour_idx in hours
+    delta_rd_cost["$hour_idx"] = Dict{String, Any}()
+    rd_cost_no_hvdc_cont = [] 
+    rd_cost_hvdc_cont = []
 
+    _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, timeseries_data)
+    contingencies = _EUGO.find_critical_contingencies(result, zone_grid_hourly, hour_idx; min_rating = 15, loading = 0.7)
+
+    for (cont, contingency) in contingencies["$hour_idx"]
+        print("================= hour:", hour_idx," =========== contingency:", contingency ,"=============", "\n")
+        grid_data_rd = _EUGO.prepare_redispatch_data(result, zone_grid_hourly, hour_idx; contingency = contingency, border_slack = 0.01)
+
+        ##### RUN RD_OPF without control
+        s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "fix_converter_setpoints" => true)
+        result_crd = CBAOPF.solve_rdopf(grid_data_rd, _PM.DCPPowerModel, gurobi; setting = s) 
+
+        if isnan(result_crd["objective"])
+            push!(rd_cost_no_hvdc_cont, 0)
+        else
+            push!(rd_cost_no_hvdc_cont, result_crd["objective"])
+        end
+
+        ##### RUN RD_OPF with control
+        s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "fix_converter_setpoints" => false)
+        result_crd = CBAOPF.solve_rdopf(grid_data_rd, _PM.DCPPowerModel, gurobi; setting = s) 
+
+        if isnan(result_crd["objective"])
+            push!(rd_cost_hvdc_cont, 0)
+        else
+            push!(rd_cost_hvdc_cont, result_crd["objective"])
+        end
+    end
+    delta_rd_cost_cont = rd_cost_no_hvdc_cont .- rd_cost_hvdc_cont
+    mean_delta_rd_cost = sum(delta_rd_cost_cont[findall(delta_rd_cost_cont .!=0.0)])/length(findall(delta_rd_cost_cont .!= 0.0))
+    max_delta_rd_cost = maximum(rd_cost_no_hvdc_cont .- rd_cost_hvdc_cont)
+
+    delta_rd_cost["$hour_idx"]["rd_cost_no_hvdc_cont"] = rd_cost_no_hvdc_cont
+    delta_rd_cost["$hour_idx"]["rd_cost_hvdc_cont"] = rd_cost_hvdc_cont
+    delta_rd_cost["$hour_idx"]["delta_rd_cost_cont"] = delta_rd_cost_cont
+    delta_rd_cost["$hour_idx"]["mean_delta_rd_cost"] = mean_delta_rd_cost
+    delta_rd_cost["$hour_idx"]["max_delta_rd_cost"] = max_delta_rd_cost
+end
+
+hour_factor = 8760/length(hours)
+print("Average benefits of HVDC control: ", sum([hour["mean_delta_rd_cost"] for (h, hour) in delta_rd_cost] * hour_factor), "\n")
+print("Maximum benefits of HVDC control: ", sum([hour["max_delta_rd_cost"] for (h, hour) in delta_rd_cost] * hour_factor), "\n")
 
 #################
 # zone_grid_hourly = deepcopy(zone_grid)

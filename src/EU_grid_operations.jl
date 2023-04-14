@@ -27,7 +27,9 @@ include("tyndp_model_matching/get_grid_data.jl")
 include("tyndp_model_matching/tyndp_zonal_to_eu_grid_nodal.jl")
 include("tyndp_model_matching/load_results.jl")
 include("create_eu_grid_model/isolate_zones.jl")
-include("create_eu_grid_model/add_new_hvdc_links.jl")
+include("core/add_new_hvdc_links.jl")
+include("core/find_critical_contingencies.jl")
+include("core/clustering.jl")
 include("io/process_results.jl")
 
 end # module EU_grid_operations

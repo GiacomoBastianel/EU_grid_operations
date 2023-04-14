@@ -250,38 +250,6 @@ function add_branch!(data, ntcs, b, nodal_data)
     return data
 end
     
-    
-    
-    # function prepare_hourly_data_opf(grid_data, grid_data_raw, input_data, scenario_data, result, hour, zone, wind_onshore, wind_offshore, pv)       
-    #     ## Hourly demand data
-    #     total_hourly_load = scenario_data[zone]["demand"][hour] / grid_data["baseMVA"]
-    #     total_grid_load = sum([load["pd"] for (l, load) in grid_data_raw["load"]])
-    #     for (l, load) in grid_data["load"]
-    #         load["pd"] = grid_data_raw["load"][l]["pd"] * total_hourly_load / total_grid_load
-    #         load["pred_rel_max"] = scenario_data[zone]["generation"]["DSR"]["capacity"][1] / (total_grid_load * grid_data["baseMVA"])
-    #         load["cost_red"] = grid_data["gencost"]["DSR"] * grid_data["baseMVA"]
-    #         load["cost_curt"] = grid_data["gencost"]["VOLL"] * grid_data["baseMVA"]
-    #         load["flex"] = 1
-    #     end
-    
-    #     for (g, gen) in grid_data["gen"]
-    #         if gen["type"] == "Solar PV" 
-    #             gen["pg"]   = deepcopy(grid_data_raw["gen"][g]["pmax"] * pv[hour])
-    #             gen["pmax"] = deepcopy(grid_data_raw["gen"][g]["pmax"] * pv[hour])
-    #         end
-    #         if  gen["type"] == "Offshore Wind" 
-    #             gen["pg"]   = deepcopy(grid_data_raw["gen"][g]["pmax"] * wind_onshore[hour])
-    #             gen["pmax"] = deepcopy(grid_data_raw["gen"][g]["pmax"] * wind_onshore[hour])
-    #         end
-    #         if  gen["type"] == "Onshore Wind"
-    #             gen["pg"]   = deepcopy(grid_data_raw["gen"][g]["pmax"] * wind_offshore[hour])
-    #             gen["pmax"] = deepcopy(grid_data_raw["gen"][g]["pmax"] * wind_offshore[hour])
-    #         end
-    #     end    
-    #     grid_data = determine_total_xb_flow!(input_data, grid_data, grid_data_raw, result, hour, zone)
-    
-    #     return grid_data
-    # end
 function prepare_mn_data_opf(grid_data, grid_data_raw, input_data, scenario_data, result, hour_start, hour_end, zone, wind_onshore, wind_offshore, pv)
     number_of_hours = hour_end - hour_start + 1
     hours = hour_start : hour_end
