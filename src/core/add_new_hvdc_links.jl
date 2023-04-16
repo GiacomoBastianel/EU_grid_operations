@@ -36,6 +36,15 @@ function add_hvdc_links(grid_data, links)
             add_converter!(grid_data_inv, ac_bus_idx, dc_bus_idx_gg, power_rating)
             add_dc_branch!(grid_data_inv, dc_bus_idx_bb, dc_bus_idx_gg, power_rating)
         elseif key == "Suedostlink" 
+            # Wolmirstedt: 52.26902204809363, 11.639982340653019
+            # Isar: 48.60705,12.29723
+            grid_data_inv, dc_bus_idx_ws = add_dc_bus!(grid_data_inv, dc_voltage; lat = 52.26902204809363, lon = 11.639982340653019)
+            ac_bus_idx = find_closest_bus(grid_data_inv, 52.26902204809363, 11.639982340653019)
+            add_converter!(grid_data_inv, ac_bus_idx, dc_bus_idx_ws, power_rating)
+            grid_data_inv, dc_bus_idx_is = add_dc_bus!(grid_data_inv, dc_voltage; lat = 48.60705, lon = 12.29723)
+            ac_bus_idx = find_closest_bus(grid_data_inv, 48.60705, 12.29723)
+            add_converter!(grid_data_inv, ac_bus_idx, dc_bus_idx_is, power_rating)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_ws, dc_bus_idx_is, power_rating)
         end
     end
     return grid_data_inv

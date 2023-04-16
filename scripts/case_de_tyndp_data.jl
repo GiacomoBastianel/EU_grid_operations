@@ -29,9 +29,9 @@ import StatsPlots
 scenario = "GA2030"
 climate_year = "2007"
 load_data = true
-use_case = "de_hvdc_sl"
+use_case = "de_hvdc_sol"
 only_hvdc_case = false
-links = Dict("Suedlink" => [])#,  "Ultranet" => [], "Suedlink" => []) # "Suedostlink" => [] ,
+links = Dict("Suedostlink" => [])#,  "Ultranet" => [], "Suedlink" => []) # "Suedostlink" => [] ,
 zone = "DE00"
 output_base = "DE"
 output_cba = "DE_HVDC"
