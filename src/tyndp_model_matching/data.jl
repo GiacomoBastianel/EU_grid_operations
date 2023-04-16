@@ -492,7 +492,7 @@ function prepare_redispatch_data(opf_result, grid_data, hour; contingency = noth
         end
         
         gen["rdcost_up"] = gen["cost"][1] * rd_cost_factor
-        gen["rdcost_down"] = gen["cost"][1] * rd_cost_factor
+        gen["rdcost_down"] = gen["cost"][1] * rd_cost_factor * 0
         if !haskey(gen, "start_up_cost")
             gen["start_up_cost"] = 500
         end

@@ -29,9 +29,9 @@ import StatsPlots
 scenario = "GA2030"
 climate_year = "2007"
 load_data = true
-use_case = "de_hvdc_un"
+use_case = "de_hvdc_sl"
 only_hvdc_case = false
-links = Dict("Ultranet" => [])#,  "Suedlink" => []) # "Suedostlink" => [] ,
+links = Dict("Suedlink" => [])#,  "Ultranet" => [], "Suedlink" => []) # "Suedostlink" => [] ,
 zone = "DE00"
 output_base = "DE"
 output_cba = "DE_HVDC"
@@ -42,7 +42,7 @@ batch_size = 365
 ############ LOAD EU grid data
 file = "./data_sources/European_grid.json"
 output_file_name_rd = joinpath("results", join([use_case,"_",scenario,"_", climate_year, "_rd.json"]))
-file_name_cl = joinpath("results", join([use_case,"_",scenario,"_", climate_year, "_cl.json"]))
+file_name_cl = joinpath("results", join([use_case,"_",scenario,"_", climate_year, "_inv_cl.json"]))
 gurobi = Gurobi.Optimizer
 EU_grid = _PM.parse_file(file)
 _PMACDC.process_additional_data!(EU_grid)
