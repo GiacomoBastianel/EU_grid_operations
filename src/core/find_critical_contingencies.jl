@@ -5,12 +5,14 @@
 function find_critical_contingencies(opf_result, grid_data, hour; min_rating = 10, loading = 0.5)
     contingencies = Dict{String, Any}()
     push!(contingencies, "$hour" => Dict{String, Any}())
-    for (b, branch) in opf_result["$hour"]["solution"]["branch"]
-        rating = grid_data["branch"][b]["rate_a"]
-        flow = branch["pf"]
-        if rating >= min_rating && abs(flow / rating) >= loading
-            push!(contingencies["$hour"], b => parse(Int, b))
-        end  
+    if !isempty(opf_result["$hour"]["solution"])
+        for (b, branch) in opf_result["$hour"]["solution"]["branch"]
+            rating = grid_data["branch"][b]["rate_a"]
+            flow = branch["pf"]
+            if rating >= min_rating && abs(flow / rating) >= loading
+                push!(contingencies["$hour"], b => parse(Int, b))
+            end  
+        end
     end
 
     return contingencies

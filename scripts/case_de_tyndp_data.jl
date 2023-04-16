@@ -29,23 +29,21 @@ import StatsPlots
 scenario = "GA2030"
 climate_year = "2007"
 load_data = true
-use_case = "de_hvdc_sl_un"
+use_case = "de_hvdc_un"
 only_hvdc_case = false
-links = Dict("Ultranet" => [],  "Suedlink" => []) # "Suedostlink" => [] ,
+links = Dict("Ultranet" => [])#,  "Suedlink" => []) # "Suedostlink" => [] ,
 zone = "DE00"
 output_base = "DE"
 output_cba = "DE_HVDC"
-number_of_clusters = 2
-number_of_hours_rd = 2
+number_of_clusters = 200
 hour_start_idx = 1
-hour_end_idx = 24
-batch_size = 24
+hour_end_idx = 8760
+batch_size = 365
 ############ LOAD EU grid data
 include("batch_opf.jl")
 file = "./data_sources/European_grid.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
-output_file_name_inv = joinpath("results", join([use_case,"_",scenario,"_", climate_year, "_inv"]))
-output_file_name_rd = joinpath("results", join([use_case,"_",scenario,"_", climate_year, "_rd.json"]))
+output_file_name_inv = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
 gurobi = Gurobi.Optimizer
 EU_grid = _PM.parse_file(file)
 _PMACDC.process_additional_data!(EU_grid)
@@ -112,78 +110,17 @@ batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s
 
 
 ## Load and process results
-result, result_con = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, output_file_name)
-result_inv, result_con_inv = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, output_file_name_inv)
-
-# do cluserting for redispatch calcualtions
-hourly_indicators = _EUGO.calculate_hourly_indicators(result_inv, zone_grid, timeseries_data)
-clusters = _EUGO.res_demand_clustering(hourly_indicators, number_of_clusters, number_of_hours_rd)
-
-
-###############
-# Redispatch Calcualtions
-zone_grid_hourly = deepcopy(zone_grid)
-delta_rd_cost = Dict{String, Any}()
-for (c, hours) in clusters
-    delta_rd_cost[c] = Dict{String, Any}() 
-    for hour_idx in hours
-        delta_rd_cost[c]["$hour_idx"] = Dict{String, Any}()
-        rd_cost_no_hvdc_cont = [] 
-        rd_cost_hvdc_cont = []
-
-        _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, timeseries_data)
-        contingencies = _EUGO.find_critical_contingencies(result, zone_grid_hourly, hour_idx; min_rating = 15, loading = 0.7)
-
-        for (cont, contingency) in contingencies["$hour_idx"]
-            print("================= hour:", hour_idx," =========== contingency:", contingency ,"=============", "\n")
-            grid_data_rd = _EUGO.prepare_redispatch_data(result, zone_grid_hourly, hour_idx; contingency = contingency, border_slack = 0.01)
-
-            ##### RUN RD_OPF without control
-            s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "fix_converter_setpoints" => true)
-            result_crd = CBAOPF.solve_rdopf(grid_data_rd, _PM.DCPPowerModel, gurobi; setting = s) 
-
-            if isnan(result_crd["objective"])
-                push!(rd_cost_no_hvdc_cont, 0)
-            else
-                push!(rd_cost_no_hvdc_cont, result_crd["objective"])
-            end
-
-            ##### RUN RD_OPF with control
-            s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "fix_converter_setpoints" => false)
-            result_crd = CBAOPF.solve_rdopf(grid_data_rd, _PM.DCPPowerModel, gurobi; setting = s) 
-
-            if isnan(result_crd["objective"])
-                push!(rd_cost_hvdc_cont, 0)
-            else
-                push!(rd_cost_hvdc_cont, result_crd["objective"])
-            end
-        end
-        delta_rd_cost_cont = rd_cost_no_hvdc_cont .- rd_cost_hvdc_cont
-        mean_delta_rd_cost = sum(delta_rd_cost_cont[findall(delta_rd_cost_cont .!=0.0)])/length(findall(delta_rd_cost_cont .!= 0.0))
-        max_delta_rd_cost = maximum(rd_cost_no_hvdc_cont .- rd_cost_hvdc_cont)
-
-        delta_rd_cost[c]["$hour_idx"]["rd_cost_no_hvdc_cont"] = rd_cost_no_hvdc_cont
-        delta_rd_cost[c]["$hour_idx"]["rd_cost_hvdc_cont"] = rd_cost_hvdc_cont
-        delta_rd_cost[c]["$hour_idx"]["delta_rd_cost_cont"] = delta_rd_cost_cont
-        delta_rd_cost[c]["$hour_idx"]["mean_delta_rd_cost"] = mean_delta_rd_cost
-        delta_rd_cost[c]["$hour_idx"]["max_delta_rd_cost"] = max_delta_rd_cost
-    end
-end
+result_con = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, zone_grid, timeseries_data, number_of_clusters, output_file_name)
+result_con_inv = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, zone_grid, timeseries_data, number_of_clusters, output_file_name_inv)
 
 hour_factor = 8760/(hour_end_idx - hour_start_idx + 1)
-hour_factor_rd = 8760/(number_of_clusters * number_of_hours_rd)
-
 print("Total cost = ", result_con["total_cost"] / 1e6 * hour_factor, " MEuro", "\n")
 print("Total cost with investment = ", result_con_inv["total_cost"] / 1e6 * hour_factor, " MEuro","\n")
-print("Average benefits of HVDC control: ", sum([sum([hour["mean_delta_rd_cost"] for (h, hour) in cluster]) for (c, cluster) in delta_rd_cost]) * hour_factor_rd / 1e6,  " MEuro", "\n")
-print("Maximum benefits of HVDC control: ", sum([sum([hour["max_delta_rd_cost"] for (h, hour) in cluster]) for (c, cluster) in delta_rd_cost]) * hour_factor_rd / 1e6,   " MEuro", "\n")
 
 
-# Save re-dispatch results
-json_string = JSON.json(delta_rd_cost)
-open(output_file_name_rd,"w") do f
-write(f, json_string)
-end
+
+
+
 
 
 

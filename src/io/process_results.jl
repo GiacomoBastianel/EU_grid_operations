@@ -1,10 +1,14 @@
-function process_results(hour_start, hour_end, batch_size, file_name::String)
+function process_results(hour_start, hour_end, batch_size, grid_data, timeseries_data, number_of_clusters, file_name::String)
+
+    file_name_ind = join([file_name, "_ind.json"])
+    file_name_cl = join([file_name, "_cl.json"])
     iterations = Int(hour_end - hour_start + 1) /batch_size
 
-    result= Dict{String, Any}(["$i" => Dict{String, Any}() for i in hour_start:hour_end])
+    result = Dict{String, Any}(["$i" => Dict{String, Any}() for i in hour_start:hour_end])
     for i in 1:iterations
         hs = Int(hour_start + (i-1) * batch_size)
         he = Int(hs + batch_size - 1)
+        print("Processing results from hour ", hs, " to " , he, "\n")
         fn = join([file_name, "_opf_","$hs","_to_","$he",".json"])
         res = Dict{String, Any}()
         open(fn) do f
@@ -31,7 +35,26 @@ function process_results(hour_start, hour_end, batch_size, file_name::String)
     result_con = Dict{String, Any}() 
     result_con["total_cost"] = sum([cost for (c, cost) in total_costs_])
     result_con["load_shedding"] = load_shedding
-    return result, result_con
+
+    # do cluserting for redispatch calcualtions
+    hourly_indicators = calculate_hourly_indicators(result, grid_data, timeseries_data)
+    clusters, cluster_centers = res_demand_clustering(hourly_indicators, number_of_clusters)
+
+    cluster_results = Dict{String, Any}(["$c" => result["$c"] for c in clusters])
+
+    # Save re-dispatch results
+    json_string = JSON.json(hourly_indicators)
+    open(file_name_ind,"w") do f
+    write(f, json_string)
+    end
+
+    # Save re-dispatch results
+    json_string = JSON.json(cluster_results)
+    open(file_name_cl,"w") do f
+    write(f, json_string)
+    end
+
+    return result_con
 end
 
 
