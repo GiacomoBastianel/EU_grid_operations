@@ -62,17 +62,9 @@ function isolate_zones(grid_data, zones; border_slack = 0)
                 zone_data["branchdc"][b] = branch
             end
         end
-
-        # for (z, zone_) in grid_data["zonal_peak_demand"]
-        #     if zone_["zone"] == zone
-        #         zone_data["zonal_peak_demand"] = zone_data["zonal_peak_demand"] + zone_["demand"]
-        #     end
-        # end
         add_borders!(zone_data, grid_data, zone; border_slack = border_slack)
     end
 
-
-    
     return zone_data
 end
 
@@ -119,7 +111,7 @@ function add_borders!(zone_data, grid_data, zone; border_slack = 0)
         if !(any("$f_bus" .== keys(zone_data["busdc"])) && any("$t_bus" .== keys(zone_data["busdc"])))
             if  !any("$f_bus" .== keys(zone_data["busdc"]))
                 conv_bus = f_bus
-            elseif  !any("$t_bus" .== keys(zone_data["busdc"]))
+            elseif !any("$t_bus" .== keys(zone_data["busdc"]))
                 conv_bus = t_bus
             end
             for (c, convdc) in grid_data["convdc"]
