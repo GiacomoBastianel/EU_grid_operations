@@ -32,5 +32,6 @@ include("core/add_new_hvdc_links.jl")
 include("core/find_critical_contingencies.jl")
 include("core/clustering.jl")
 include("io/process_results.jl")
+include("io/plotting.jl")
 
 end # module EU_grid_operations

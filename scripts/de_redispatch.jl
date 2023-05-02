@@ -29,9 +29,9 @@ import StatsPlots
 scenario = "GA2030"
 climate_year = "2007"
 load_data = true
-use_case = "de_hvdc_backbone"
+use_case = "de_hvdc_sol"
 only_hvdc_case = false
-links = Dict("Suedostlink" => [],  "Ultranet" => [], "Suedlink" => []) # "Suedostlink" => [] ,
+links = Dict("Suedostlink" => [] , "Suedostlink" => [], "Ultranet" => []) # 
 zone = "DE00"
 output_base = "DE"
 output_cba = "DE_HVDC"
@@ -146,8 +146,13 @@ for (hour_idx, hour) in res_cl
         end
     end
     delta_rd_cost_cont = rd_cost_no_hvdc_cont .- rd_cost_hvdc_cont
-    mean_delta_rd_cost = sum(delta_rd_cost_cont[findall(delta_rd_cost_cont .!=0.0)])/length(findall(delta_rd_cost_cont .!= 0.0))
-    max_delta_rd_cost = maximum(rd_cost_no_hvdc_cont .- rd_cost_hvdc_cont)
+    if all(delta_rd_cost_cont .== 0)
+        mean_delta_rd_cost = 0
+        max_delta_rd_cost = 0
+    else
+        mean_delta_rd_cost = sum(delta_rd_cost_cont[findall(delta_rd_cost_cont .!=0.0)])/length(findall(delta_rd_cost_cont .!= 0.0))
+        max_delta_rd_cost = maximum(rd_cost_no_hvdc_cont .- rd_cost_hvdc_cont)
+    end
 
     delta_rd_cost[hour_idx]["rd_cost_no_hvdc_cont"] = rd_cost_no_hvdc_cont
     delta_rd_cost[hour_idx]["rd_cost_hvdc_cont"] = rd_cost_hvdc_cont
@@ -166,4 +171,20 @@ print("Maximum benefits of HVDC control: ", sum([hour["max_delta_rd_cost"] for (
 json_string = JSON.json(delta_rd_cost)
 open(output_file_name_rd,"w") do f
 write(f, json_string)
+end
+
+############# POST PROCESSING 
+res_rd = Dict{String, Any}()
+open(output_file_name_rd) do f
+    dicttxt = read(f,String)  # file information to string
+    global res_rd = JSON.parse(dicttxt)  # parse and transform data
+end
+
+print("Average benefits of HVDC control: ", sum([hour["mean_delta_rd_cost"] for (h, hour) in res_rd]) * hour_factor_rd / 1e6,  " MEuro", "\n")
+print("Maximum benefits of HVDC control: ", sum([hour["max_delta_rd_cost"] for (h, hour) in res_rd]) * hour_factor_rd / 1e6,   " MEuro", "\n")
+
+
+for (h, hour) in res_rd
+    print(h, " ", hour["mean_delta_rd_cost"], "\n")
+
 end

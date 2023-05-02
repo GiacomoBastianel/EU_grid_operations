@@ -26,12 +26,12 @@ using StatsBase
 import StatsPlots
 
 ######### DEFINE INPUT PARAMETERS
-scenario = "GA2030"
+scenario = "GA2040"
 climate_year = "2007"
 load_data = true
 use_case = "de_hvdc_backbone"
 only_hvdc_case = false
-links = Dict("Suedostlink" => [],  "Ultranet" => [], "Suedlink" => []) # "Suedostlink" => [] ,
+links = Dict("Suedostlink" => [] , "Suedostlink" => [], "Ultranet" => []) # 
 zone = "DE00"
 output_base = "DE"
 output_cba = "DE_HVDC"
