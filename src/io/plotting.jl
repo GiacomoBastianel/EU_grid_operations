@@ -121,7 +121,7 @@ else
     trace=vcat(trace_AC,trace_DC,traceDC,traceAC) # both AC Branches and buses, DC Branches and buses
 end
 #set map location
-geo = PlotlyJS.attr(scope="europe",fitbounds="locations")
+geo = PlotlyJS.attr(fitbounds="locations")
  
 #plot layput
 layout = PlotlyJS.Layout(geo=geo,geo_resolution=50, width=1000, height=1100,
