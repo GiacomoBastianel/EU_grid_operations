@@ -16,6 +16,8 @@ import ExcelFiles; const _EF = ExcelFiles
 import DataFrames; const _DF = DataFrames
 import CSV
 import Clustering
+import Plots
+import PlotlyJS
 # Create our module level logger (this will get precompiled)
 const _LOGGER = Memento.getlogger(@__MODULE__)
 
