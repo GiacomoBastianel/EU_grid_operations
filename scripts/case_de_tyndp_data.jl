@@ -41,7 +41,6 @@ hour_end_idx = 8760
 batch_size = 365
 ############ LOAD EU grid data
 include("batch_opf.jl")
-include("../src/io/plotting.jl")
 file = "./data_sources/European_grid.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
 output_file_name_inv = joinpath("results", join([use_case,"_",scenario,"_", climate_year,"_inv"]))

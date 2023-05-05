@@ -128,7 +128,7 @@ function plot_grid(data, file_name; ac_only = false, color_branches = false, col
                 if maximum_flows == true
                     flow =  maximum(flows_ac["$branch"])
                 else
-                    flow =  mean(flows_ac["$branch"])
+                    flow =  sum(flows_ac["$branch"]) / length(flows_ac["$branch"])
                 end
                 color = Int(round(max(1, flow * 100)))
                 lineAC = PlotlyJS.attr(width = 1 * txt_x, color = colormap[color])
@@ -136,9 +136,9 @@ function plot_grid(data, file_name; ac_only = false, color_branches = false, col
             else
                 branch = row.branch
                 if maximum_flows == true
-                    flow =  maximum(flows_ac["$branch"])
+                    flow =  maximum(flows_dc["$branch"])
                 else
-                    flow =  mean(flows_ac["$branch"])
+                    flow =  sum(flows_dc["$branch"]) / length(flows_dc["$branch"])
                 end
                 color = Int(round(max(1, flow * 100)))
                 lineDC = PlotlyJS.attr(width = 2 * txt_x, color = colormap[color])
