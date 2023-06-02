@@ -4,7 +4,7 @@ using PowerModelsACDC; const _PMACDC = PowerModelsACDC
 using Gurobi
 using EU_grid_operations; const _EUGO = EU_grid_operations
 using JSON
-import CBAOPF
+import CbaOPF
 using Plots
 
 
@@ -30,7 +30,7 @@ result = _PMACDC.run_acdcopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting =
 # Solve using PowerModels
 result = _PM.solve_opf(EU_grid, DCPPowerModel, Gurobi.Optimizer)
 
-# Add data fields to solve with CBAOPF.jl
+# Add data fields to solve with CbaOPF.jl
 EU_grid["pst"] = Dict{String, Any}()
 for (l, load) in EU_grid["load"]
     load["pred_rel_max"]  = 0
@@ -42,8 +42,8 @@ end
 # Update setttings
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
 
-# solve CBAOPF
-result_cba = CBAOPF.solve_cbaopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s) 
+# solve CbaOPF
+result_cba = CbaOPF.solve_cbaopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s) 
 
 
 #### Plot some results:

@@ -13,7 +13,7 @@ import Memento
 import JuMP
 import Gurobi  # needs startvalues for all variables!
 import JSON
-import CBAOPF
+import CbaOPF
 import DataFrames; const _DF = DataFrames
 import CSV
 import ExcelFiles; const _EF = ExcelFiles

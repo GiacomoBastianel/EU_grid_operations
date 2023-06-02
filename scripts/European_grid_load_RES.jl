@@ -5,7 +5,7 @@ using PowerModelsACDC; const _PMACDC = PowerModelsACDC
 using Gurobi
 using JSON
 using Feather
-import CBAOPF
+import CbaOPF
 using CSV
 using DataFrames
 
@@ -53,7 +53,7 @@ for i in 1:number_of_hours
     results["$i"] = Dict{String,Any}()
     EU_grid_hour = include_RES_and_load(EU_grid,EU_grid_hour,RES_time_series_adjusted,load_zones,i)
     s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
-    results["$i"] = deepcopy(CBAOPF.solve_cbaopf(EU_grid_hour, DCPPowerModel, Gurobi.Optimizer; setting = s)) 
+    results["$i"] = deepcopy(CbaOPF.solve_cbaopf(EU_grid_hour, DCPPowerModel, Gurobi.Optimizer; setting = s)) 
 end
 
 
@@ -88,7 +88,7 @@ for (l, load) in EU_grid["load"]
     load["flex"] = 1
 end
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
-result_cba = CBAOPF.solve_cbaopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s) 
+result_cba = CbaOPF.solve_cbaopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s) 
 
 
 #### Plot some results:

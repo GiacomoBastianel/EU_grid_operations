@@ -19,12 +19,14 @@ function construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, clim
     data["switch"] = Dict{String, Any}()
     data["areas"] = Dict{String, Any}()
     data["shunt"] = Dict{String, Any}()
+    data["storage_simple"] = Dict{String, Any}()
     data["source_version"] = "2"
     data["name"] = "TYNDPzonal"
     data["baseMVA"] = 100.0
     data["per_unit"] = true
     
     global g_idx = 1
+    global s_idx = 1
     
     print("######################################", "\n")
     print("PROCESSING ZONAL GENERATION AND DEMAND", "\n")
@@ -64,9 +66,14 @@ function construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, clim
                     nodal_data[node_id]["generation"][g]["timeseries"] = zeros(1, 8760)
                 end
             end
-    
-            add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; ens = false)
-            g_idx = g_idx + 1
+            if g == "Battery" # to do extend to reservoir & PS.....
+                add_storage!(data, s_idx, g, n, nodal_data, node_id)
+                s_idx = s_idx + 1
+            else
+                add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; ens = false)
+                g_idx = g_idx + 1
+            end
+            
         end
     
         # Add one ENS generator to each node with cost = VOLL
@@ -110,6 +117,32 @@ function prepare_hourly_data!(data, nodal_data, hour)
 
     return data
 end
+
+function prepare_mn_data(data, nodal_data, hours)
+    mn_data = _IM.replicate(data, length(hours), Set{String}(["source_type", "name", "source_version", "per_unit"]))
+
+    for hour in hours
+        for (l, load) in mn_data["nw"]["$hour"]["load"]
+            node = load["node"]
+            load["pd"] = nodal_data[node]["demand"][hour] / data["baseMVA"]
+        end
+
+        for (g, gen) in mn_data["nw"]["$hour"]["gen"]
+            node = gen["node"]
+            if gen["type"] == "Solar PV"
+                gen["pmax"] = nodal_data[node]["generation"]["Solar PV"]["timeseries"][hour] / mn_data["nw"]["$hour"]["baseMVA"]
+            elseif gen["type"] == "Onshore Wind"
+                gen["pmax"] = nodal_data[node]["generation"]["Onshore Wind"]["timeseries"][hour] / mn_data["nw"]["$hour"]["baseMVA"]
+            elseif gen["type"] == "Offshore Wind"
+                gen["pmax"] = nodal_data[node]["generation"]["Offshore Wind"]["timeseries"][hour] / mn_data["nw"]["$hour"]["baseMVA"]
+            elseif gen["type"] == "ENS"
+                gen["pmax"] = nodal_data[node]["demand"][hour] / mn_data["nw"]["$hour"]["baseMVA"]
+            end
+        end
+    end
+
+    return mn_data
+end
     
     
 function add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; ens = false)
@@ -148,6 +181,28 @@ function add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants,
         data["gen"]["$g_idx"]["emissions"] = emission_factor[g]
         data["gen"]["$g_idx"]["inertia_constants"] = inertia_constants[g]
     end
+
+    return data
+end
+
+function add_storage!(data, s_idx, g, n, nodal_data, node_id)
+    data["storage_simple"]["$s_idx"] = Dict{String, Any}()
+    data["storage_simple"]["$s_idx"]["storage_bus"] = n
+    data["storage_simple"]["$s_idx"]["ps"] = 0
+
+    if !isempty(nodal_data[node_id]["generation"][g]["capacity"])
+        data["storage_simple"]["$s_idx"]["charge_rating"] = nodal_data[node_id]["generation"][g]["capacity"][1] / data["baseMVA"]
+        data["storage_simple"]["$s_idx"]["status"] = 1
+    else
+        data["storage_simple"]["$s_idx"]["charge_rating"] = 0
+        data["storage_simple"]["$s_idx"]["status"] = 0
+    end
+
+    data["storage_simple"]["$s_idx"]["discharge_rating"] = data["storage_simple"]["$s_idx"]["charge_rating"]
+    data["storage_simple"]["$s_idx"]["discharge_efficiency"] = data["storage_simple"]["$s_idx"]["charge_efficiency"] = 0.92
+
+    data["storage_simple"]["$s_idx"]["energy"] = data["storage_simple"]["$s_idx"]["charge_rating"] * 4
+    data["storage_simple"]["$s_idx"]["energy_rating"] = data["storage_simple"]["$s_idx"]["charge_rating"] * 8 
 
     return data
 end

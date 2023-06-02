@@ -14,7 +14,7 @@ import Memento
 import JuMP
 import Gurobi  # needs startvalues for all variables!
 import JSON
-import CBAOPF
+import CbaOPF
 import DataFrames; const _DF = DataFrames
 import CSV
 import ExcelFiles; const _EF = ExcelFiles
@@ -321,7 +321,7 @@ print("Total cost with investment = ", result_con_inv["total_cost"] / 1e6 * hour
 # # # zone_grid_hourly["borders"]["7"]["slack"] = 0.06
 # # zone_grid_hourly["borders"]["8"]["slack"] = 0.01
 # # zone_grid_hourly["borders"]["13"]["slack"] = 0.01
-# # res = CBAOPF.solve_cbaopf(zone_grid_hourly, DCPPowerModel, Gurobi.Optimizer; setting = s) 
+# # res = CbaOPF.solve_CbaOPF(zone_grid_hourly, DCPPowerModel, Gurobi.Optimizer; setting = s) 
 
 # # ###### Validation ###########
 

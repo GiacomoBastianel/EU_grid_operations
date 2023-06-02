@@ -1,4 +1,4 @@
-function plot_grid(data, file_name; ac_only = false, color_branches = false, colormap = nothing, flows_ac = nothing, flows_dc = nothing, maximum_flows = false)
+function plot_grid(data, file_name; ac_only = false, color_branches = false, colormap = nothing, flows_ac = nothing, flows_dc = nothing, maximum_flows = false, plot_node_numbers = false)
     # Creating a series of vectors to be added to a DataFrame dictionary
     # AC Buses (type 0) and DC Buses (type 1)
     nodes = []
@@ -83,20 +83,30 @@ function plot_grid(data, file_name; ac_only = false, color_branches = false, col
     dc_buses=filter(:type => ==(1), dict_nodes)       
     markerDC = PlotlyJS.attr(size=[txt_x],
                 color="blue")
-           
-     
-    #AC buses legend
-    traceAC = [PlotlyJS.scattergeo(;mode="markers",#textfont=PlotlyJS.attr(size=10*txt_x),
-    ##textposition="top center",text=string(row[:node][1]),
-                lat=[row[:lat]],lon=[row[:lon]],
-                marker=markerAC)  for row in eachrow(ac_buses)]
-     
-    #DC buses legend
-    traceDC = [PlotlyJS.scattergeo(;mode="markers",textfont=PlotlyJS.attr(size=10*txt_x),
-    textposition="top center",text=string(row[:node][1]),
-                lat=[row[:lat]],lon=[row[:lon]],
-               marker=markerDC)  for row in eachrow(dc_buses)]
-    #mode="markers+text"
+                
+    if plot_node_numbers == true            
+        #AC buses legend
+        traceAC = [PlotlyJS.scattergeo(;mode="markers+text",textfont=PlotlyJS.attr(size=txt_x),
+        textposition="top center",text=string(row[:node][1]),
+                    lat=[row[:lat]],lon=[row[:lon]],
+                    marker=markerAC)  for row in eachrow(ac_buses)]
+        
+        #DC buses legend
+        traceDC = [PlotlyJS.scattergeo(;mode="markers+text",textfont=PlotlyJS.attr(size=txt_x),
+        textposition="top center",text=string(row[:node][1]),
+                    lat=[row[:lat]],lon=[row[:lon]],
+                marker=markerDC)  for row in eachrow(dc_buses)]
+    else
+        #AC buses legend
+        traceAC = [PlotlyJS.scattergeo(;mode="markers",
+                    lat=[row[:lat]],lon=[row[:lon]],
+                    marker=markerAC)  for row in eachrow(ac_buses)]
+        
+        #DC buses legend
+        traceDC = [PlotlyJS.scattergeo(;mode="markers",
+                    lat=[row[:lat]],lon=[row[:lon]],
+                marker=markerDC)  for row in eachrow(dc_buses)]
+    end
     
     if color_branches == false
         #DC line display
