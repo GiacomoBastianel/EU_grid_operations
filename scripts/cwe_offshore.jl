@@ -4,7 +4,6 @@ using PowerModelsACDC; const _PMACDC = PowerModelsACDC
 using EU_grid_operations; const _EUGO = EU_grid_operations
 using Gurobi
 using JSON
-using PlotlyJS
 
 
 ## Import required functions - Some of them in later stages.....

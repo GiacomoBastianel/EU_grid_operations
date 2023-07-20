@@ -10,7 +10,7 @@ using Plots
 
 # creat the json file of the grid on the default folder, e.g. data_sources/European_grid.json
 # output filename can be specified with  _EUGO.create_european_grid(output_filename = "filepath/filename")
-_EUGO.create_european_grid(output_filename = "./data_sources/European_grid_no_nseh.json", no_nseh = false)
+_EUGO.create_european_grid(output_filename = "./data_sources/European_grid_no_nseh.json", no_nseh = true)
 
 # Load the EU grid file 
 file = "./data_sources/European_grid_no_nseh.json"

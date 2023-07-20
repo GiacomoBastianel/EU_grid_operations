@@ -3,7 +3,7 @@
 # 7th March 2023
 
 
-function create_european_grid(;output_filename::String = "./data_sources/European_grid.json", no_nseh = false)
+function create_european_grid(;output_filename::String = "./data_sources/European_grid.json", no_nseh::Bool = false)
 
     # Uploading an example test system
     test_file = "./data_sources/case5_acdc.m"
@@ -54,7 +54,7 @@ function create_european_grid(;output_filename::String = "./data_sources/Europea
             for r_ in XLSX.eachrow(xf["BUS_OVERVIEW"])
                 i_ = XLSX.row_number(r_)
                 if i_ > 1
-                    if  r[2] >= r_[7]  && r[2] <= r_[8]  
+                    if  (r[2] >= r_[7]) && (r[2] <= r_[8])  
                         European_grid["bus"]["$idx"]["zone"] = r_[6] 
                     end
                 end
