@@ -80,7 +80,6 @@ push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result,
 # Determine demand response potential and add them to zone_grid. Default cost value = 140 Euro / MWh, can be changed with get_demand_reponse!(...; cost = xx)
 _EUGO.get_demand_reponse!(zone_grid, zonal_input, zone_mapping, timeseries_data)
 
-
 # There is no internal congestion as many of the lines are 5000 MVA, limit the lines....
 for (b, branch) in zone_grid["branch"]
     branch["angmin"] = -pi
@@ -93,3 +92,16 @@ for (b, branch) in zone_grid["branch"]
         end
     end
 end
+
+# Start runnning hourly OPF calculations
+hour_start_idx = 1 
+hour_end_idx =  24
+
+s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
+# This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
+result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
+
+# An alternative is to run it in chuncks of "batch_size", which will store the results as json files, e.g. hour_1_to_batch_size, ....
+# batch_size = 730
+# _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
+

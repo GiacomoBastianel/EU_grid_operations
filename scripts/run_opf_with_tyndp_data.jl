@@ -39,7 +39,6 @@ number_of_hours_rd = 5
 hour_start = 1
 hour_end = 8760
 ############ LOAD EU grid data
-include("batch_opf.jl")
 file = "./data_sources/European_grid.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
 gurobi = Gurobi.Optimizer
@@ -81,9 +80,9 @@ hour_end_idx =  8760
 
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 # This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
-result = batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
+result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
 
 # An alternative is to run it in chuncks of "batch_size", which will store the results as json files, e.g. hour_1_to_batch_size, ....
 batch_size = 730
-batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
+_EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 

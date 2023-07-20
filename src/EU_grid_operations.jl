@@ -9,6 +9,7 @@ import PowerModels
 const _PM = PowerModels
 import InfrastructureModels
 const _IM = InfrastructureModels
+import CbaOPF
 import XLSX
 import JSON
 import Feather
@@ -35,5 +36,6 @@ include("core/find_critical_contingencies.jl")
 include("core/clustering.jl")
 include("io/process_results.jl")
 include("io/plotting.jl")
+include("core/batch_opf.jl")
 
 end # module EU_grid_operations
