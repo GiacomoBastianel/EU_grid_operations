@@ -40,7 +40,7 @@ hour_start_idx = 1
 hour_end_idx = 8760
 batch_size = 365
 ############ LOAD EU grid data
-file = "./data_sources/European_grid.json"
+file = "data_sources/European_grid_no_nseh.json"
 output_file_name_rd = joinpath("results", join([use_case,"_",scenario,"_", climate_year, "_rd.json"]))
 file_name_cl = joinpath("results", join([use_case,"_",scenario,"_", climate_year, "_inv_cl.json"]))
 gurobi = Gurobi.Optimizer
