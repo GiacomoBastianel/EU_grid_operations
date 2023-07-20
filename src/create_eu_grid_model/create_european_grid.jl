@@ -3,14 +3,18 @@
 # 7th March 2023
 
 
-function create_european_grid(output_filename::String = "./data_sources/European_grid.json")
+function create_european_grid(;output_filename::String = "./data_sources/European_grid.json", no_nseh = false)
 
     # Uploading an example test system
     test_file = "./data_sources/case5_acdc.m"
     test_grid = _PM.parse_file(test_file)
 
     # Calling the Excel file
-    xf = XLSX.readxlsx(joinpath("./data_sources/GRID_MODEL.xlsx"))
+    if no_nseh == true
+        xf = XLSX.readxlsx(joinpath("./data_sources/GRID_MODEL_NO_NSEH.xlsx"))
+    else
+        xf = XLSX.readxlsx(joinpath("./data_sources/GRID_MODEL.xlsx"))
+    end
     XLSX.sheetnames(xf)
 
     # Creating a European grid dictionary in PowerModels format
