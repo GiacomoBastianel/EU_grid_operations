@@ -1,4 +1,4 @@
-function plot_grid(data, file_name; ac_only = false, color_branches = false, colormap = nothing, flows_ac = nothing, flows_dc = nothing, maximum_flows = false, plot_node_numbers = false)
+function plot_grid(data, file_name; ac_only = false, color_branches = false, flows_ac = nothing, flows_dc = nothing, maximum_flows = false, plot_node_numbers = false)
     # Creating a series of vectors to be added to a DataFrame dictionary
     # AC Buses (type 0) and DC Buses (type 1)
     nodes = []
@@ -140,8 +140,8 @@ function plot_grid(data, file_name; ac_only = false, color_branches = false, col
                 else
                     flow =  sum(flows_ac["$branch"]) / length(flows_ac["$branch"])
                 end
-                color = Int(round(max(1, flow * 100)))
-                lineAC = PlotlyJS.attr(width = 1 * txt_x, color = colormap[color])
+                # color = Int(round(max(1, flow * 100)))
+                lineAC = PlotlyJS.attr(width = 1 * txt_x, color = ColorSchemes.get(ColorSchemes.jet, flow))
                 push!(trace_AC, PlotlyJS.scattergeo(;mode="lines", lat=[row.lat_fr,row.lat_to], lon=[row.lon_fr,row.lon_to], line = lineAC))
             else
                 branch = row.branch
@@ -151,7 +151,7 @@ function plot_grid(data, file_name; ac_only = false, color_branches = false, col
                     flow =  sum(flows_dc["$branch"]) / length(flows_dc["$branch"])
                 end
                 color = Int(round(max(1, flow * 100)))
-                lineDC = PlotlyJS.attr(width = 2 * txt_x, color = colormap[color])
+                lineDC = PlotlyJS.attr(width = 2 * txt_x, color =  ColorSchemes.get(ColorSchemes.jet, flow))
                 push!(trace_DC, PlotlyJS.scattergeo(;mode="lines", lat=[row.lat_fr,row.lat_to], lon=[row.lon_fr,row.lon_to], line = lineDC))
             end
         end

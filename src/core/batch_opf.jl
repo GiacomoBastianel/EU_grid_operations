@@ -23,7 +23,7 @@ function batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, sol
     end
 end
 
-function run_batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, solver, setting,  file_name)
+function run_batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, solver, setting, file_name)
     zone_grid_hourly = deepcopy(zone_grid)
     result = Dict{String, Any}()
     

@@ -19,6 +19,7 @@ import CSV
 import Clustering
 import Plots
 import PlotlyJS
+import ColorSchemes
 # Create our module level logger (this will get precompiled)
 const _LOGGER = Memento.getlogger(@__MODULE__)
 
@@ -34,6 +35,7 @@ include("create_eu_grid_model/isolate_zones.jl")
 include("core/add_new_hvdc_links.jl")
 include("core/find_critical_contingencies.jl")
 include("core/clustering.jl")
+include("core/latlon2distance.jl")
 include("io/process_results.jl")
 include("io/plotting.jl")
 include("core/batch_opf.jl")

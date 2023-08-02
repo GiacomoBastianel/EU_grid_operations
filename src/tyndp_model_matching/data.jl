@@ -6,7 +6,7 @@
 # hourly RES generation and demand values
 #######################################
 
-function construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
+function construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; co2_cost = 0.0)
 
     data = Dict{String, Any}()
     nodal_data = Dict{String, Any}()
@@ -70,7 +70,7 @@ function construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, clim
                 add_storage!(data, s_idx, g, n, nodal_data, node_id)
                 s_idx = s_idx + 1
             else
-                add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; ens = false)
+                add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; co2_cost = co2_cost, ens = false)
                 g_idx = g_idx + 1
             end
             
@@ -121,22 +121,23 @@ end
 function prepare_mn_data(data, nodal_data, hours)
     mn_data = _IM.replicate(data, length(hours), Set{String}(["source_type", "name", "source_version", "per_unit"]))
 
-    for hour in hours
-        for (l, load) in mn_data["nw"]["$hour"]["load"]
+    for h_idx in 1:length(hours)
+        hour = hours[h_idx]
+        for (l, load) in mn_data["nw"]["$h_idx"]["load"]
             node = load["node"]
             load["pd"] = nodal_data[node]["demand"][hour] / data["baseMVA"]
         end
 
-        for (g, gen) in mn_data["nw"]["$hour"]["gen"]
+        for (g, gen) in mn_data["nw"]["$h_idx"]["gen"]
             node = gen["node"]
             if gen["type"] == "Solar PV"
-                gen["pmax"] = nodal_data[node]["generation"]["Solar PV"]["timeseries"][hour] / mn_data["nw"]["$hour"]["baseMVA"]
+                gen["pmax"] = nodal_data[node]["generation"]["Solar PV"]["timeseries"][hour] / mn_data["nw"]["$h_idx"]["baseMVA"]
             elseif gen["type"] == "Onshore Wind"
-                gen["pmax"] = nodal_data[node]["generation"]["Onshore Wind"]["timeseries"][hour] / mn_data["nw"]["$hour"]["baseMVA"]
+                gen["pmax"] = nodal_data[node]["generation"]["Onshore Wind"]["timeseries"][hour] / mn_data["nw"]["$h_idx"]["baseMVA"]
             elseif gen["type"] == "Offshore Wind"
-                gen["pmax"] = nodal_data[node]["generation"]["Offshore Wind"]["timeseries"][hour] / mn_data["nw"]["$hour"]["baseMVA"]
+                gen["pmax"] = nodal_data[node]["generation"]["Offshore Wind"]["timeseries"][hour] / mn_data["nw"]["$h_idx"]["baseMVA"]
             elseif gen["type"] == "ENS"
-                gen["pmax"] = nodal_data[node]["demand"][hour] / mn_data["nw"]["$hour"]["baseMVA"]
+                gen["pmax"] = nodal_data[node]["demand"][hour] / mn_data["nw"]["$h_idx"]["baseMVA"]
             end
         end
     end
@@ -145,7 +146,7 @@ function prepare_mn_data(data, nodal_data, hours)
 end
     
     
-function add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; ens = false)
+function add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; co2_cost = 0.0, ens = false)
     data["gen"]["$g_idx"] = Dict{String, Any}()
     data["gen"]["$g_idx"]["gen_bus"] = n
     data["gen"]["$g_idx"]["pg"] = 0.0
@@ -176,13 +177,42 @@ function add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants,
             data["gen"]["$g_idx"]["pmax"] = 0
             data["gen"]["$g_idx"]["gen_status"] = 0
         end
-        data["gen"]["$g_idx"]["cost"] = [0.0, 1.0, 0] .* gen_costs[g] .* data["baseMVA"]   #To be updated
+        if any(g .== ["Offshore Wind", "Onshore Wind", "Solar PV", "Solar Thermal", "Reservoir", "Run-of-River", "Other RES"]) == true 
+            gen_cost = gen_costs[g]
+        else
+            gen_cost = gen_costs[g] +  co2_cost
+        end
+        data["gen"]["$g_idx"]["cost"] = [0.0, 1.0, 0] .* gen_cost .* data["baseMVA"]
         data["gen"]["$g_idx"]["type"] = g
         data["gen"]["$g_idx"]["emissions"] = emission_factor[g]
         data["gen"]["$g_idx"]["inertia_constants"] = inertia_constants[g]
     end
 
     return data
+end
+# nodal
+function add_gen!(input_data, zone, cost, node, pmax, type)
+    new_gen_id = maximum([gen["index"] for (g, gen) in input_data["gen"]]) + 1
+    input_data["gen"]["$new_gen_id"] = Dict{String, Any}()
+    input_data["gen"]["$new_gen_id"]["zone"]          = zone
+    input_data["gen"]["$new_gen_id"]["type_tyndp"]    = type
+    input_data["gen"]["$new_gen_id"]["model"]         = 2
+    input_data["gen"]["$new_gen_id"]["name"]          = "OWFHUB"
+    input_data["gen"]["$new_gen_id"]["marginal_cost"] = cost
+    input_data["gen"]["$new_gen_id"]["gen_bus"]       = node
+    input_data["gen"]["$new_gen_id"]["pmax"]          = pmax / input_data["baseMVA"]
+    input_data["gen"]["$new_gen_id"]["country"]       = 8
+    input_data["gen"]["$new_gen_id"]["vg"]            = 1.0
+    input_data["gen"]["$new_gen_id"]["source_id"]     = Any["gen", new_gen_id]
+    input_data["gen"]["$new_gen_id"]["index"]         = new_gen_id
+    input_data["gen"]["$new_gen_id"]["cost"]          = [cost, 0.0]
+    input_data["gen"]["$new_gen_id"]["qmax"]          = pmax * 0.5 / input_data["baseMVA"] 
+    input_data["gen"]["$new_gen_id"]["gen_status"]    = 1
+    input_data["gen"]["$new_gen_id"]["qmin"]          = -pmax * 0.5 / input_data["baseMVA"] 
+    input_data["gen"]["$new_gen_id"]["co2_add_on"]    = 0.0
+    input_data["gen"]["$new_gen_id"]["type"]          = type
+    input_data["gen"]["$new_gen_id"]["pmin"]          = 0.0
+    input_data["gen"]["$new_gen_id"]["ncost"]         = 2
 end
 
 function add_storage!(data, s_idx, g, n, nodal_data, node_id)
@@ -206,7 +236,7 @@ function add_storage!(data, s_idx, g, n, nodal_data, node_id)
 
     return data
 end
-    
+ # for zonal model   
 function add_bus!(data, n, node_id, nodes)
         data["bus"]["$n"] = Dict{String, Any}()
         data["bus"]["$n"]["index"] = n
@@ -227,6 +257,32 @@ function add_bus!(data, n, node_id, nodes)
         data["bus"]["$n"]["lon"] = nodes[nodes[!, "node_id"] .== node_id, "longitude"][1]
 
     return data 
+end
+# for nodal model
+function add_bus!(input_data, zone::String, lat, lon)
+    new_bus_id = maximum([bus["index"] for (b, bus) in input_data["bus"]]) + 1
+    input_data["bus"]["$new_bus_id"] = Dict{String, Any}()
+    input_data["bus"]["$new_bus_id"]["lat"] = lat
+    input_data["bus"]["$new_bus_id"]["lon"] = lon
+    input_data["bus"]["$new_bus_id"]["zone"] = zone
+    input_data["bus"]["$new_bus_id"]["bus_i"] = new_bus_id
+    input_data["bus"]["$new_bus_id"]["name"] =  "OWFHUB"
+    input_data["bus"]["$new_bus_id"]["bus_type"]  = 2
+    input_data["bus"]["$new_bus_id"]["vmax"]      = 1.1
+    input_data["bus"]["$new_bus_id"]["qd"]        = 0
+    input_data["bus"]["$new_bus_id"]["gs"]       = 0
+    input_data["bus"]["$new_bus_id"]["country"]   = 4
+    input_data["bus"]["$new_bus_id"]["bs"]        = 0
+    input_data["bus"]["$new_bus_id"]["source_id"] = Any["bus", new_bus_id]
+    input_data["bus"]["$new_bus_id"]["area"]      = 1
+    input_data["bus"]["$new_bus_id"]["vmin"]      = 0.9
+    input_data["bus"]["$new_bus_id"]["index"]    = new_bus_id
+    input_data["bus"]["$new_bus_id"]["va"]        = 0
+    input_data["bus"]["$new_bus_id"]["vm"]        = 1
+    input_data["bus"]["$new_bus_id"]["base_kv"]   = 380
+    input_data["bus"]["$new_bus_id"]["pd"]        = 0
+
+  return input_data
 end
     
 function add_load!(data, n, nodal_data, node_id)

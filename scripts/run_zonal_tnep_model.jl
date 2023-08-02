@@ -38,7 +38,7 @@ gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer)
 scenario = "GA2040"
 climate_year = "1984"
 fetch_data = true
-hours = 1:1440
+hours = 1:24
 
 # Load grid and scenario data
 if fetch_data == true
@@ -54,7 +54,8 @@ input_data_raw = deepcopy(input_data)
 
 
 for (b, branch) in input_data["branch"]
-    branch["delta_cap_max"] = branch["rate_a"] * 0.2 # for testing.....
+    branch["delta_cap_max"] = branch["rate_a"] * 2 # for testing.....
+    distance = _EUGO.latlon2distance(input_data, branch)
     branch["capacity_cost"] = 300e5 * input_data["baseMVA"] / (25 * 8760) # for testing, update with more realistic numbers.....
 end
 

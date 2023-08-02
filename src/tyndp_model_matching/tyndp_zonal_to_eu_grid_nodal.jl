@@ -5,7 +5,7 @@
 # climate_year ::String - Climate year e.g. "2007"
 # zone_mapping ::Dict{String, Any} - Dictionary containing the mapping of zone names between both models
 # ns_hub_cap ::Float64 - Capacity of the North Sea energy hub as optional keyword argument. Default value coming from the grid model is 10 GW.
-function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing)
+function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false)
     for (g, gen) in grid_data["gen"]
         zone = gen["zone"]
 
@@ -36,11 +36,16 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
             for (z, zone_) in grid_data["zonal_generation_capacity"]
                 if zone_["zone"] == zone
                     scaling_factor = max(1, (zonal_tyndp_capacity / grid_data["baseMVA"] / zone_[type]) )
-                    gen["pmax"] = gen["pmax"] * scaling_factor
+                    if !exclude_offshore_wind
+                        if gen["type"] != "Offshore Wind"
+                            gen["pmax"] = gen["pmax"] * scaling_factor
+                        end
+                    else
+                        gen["pmax"] = gen["pmax"] * scaling_factor
+                    end
                 end
             end
         end
-                # TODO, check if it is better to put a zero in the else case
 
         # Check if a different capacity should be written into the offshore wind generator NSEH
         if !isnothing(ns_hub_cap)
@@ -254,4 +259,152 @@ function fix_data!(grid_data)
     end
 
     return grid_data
+end
+
+function add_north_sea_wind_zonal!(input_data, nodal_data, power; branch_cap = 0)
+    # first remove OWF capacity of the existing model for the particular zones
+    for (g, gen) in input_data["gen"]
+        if gen["type"] == "Offshore Wind"
+            gen_bus = gen["gen_bus"]
+            if any(input_data["bus"]["$gen_bus"]["string"] .== ["FR00", "UK00", "BE00", "NL00", "DE00", "NOS0","SE03", "DKW1"]) == true
+                gen["pmax"] = 0.0
+                gen["gen_status"] = 0
+            end
+        end
+    end
+    bus_id_ = maximum(parse.(Int, collect(keys(input_data["bus"]))))
+    bus_id = maximum(parse.(Int, collect(keys(input_data["bus"])))) + 1
+    input_data["bus"]["$bus_id"] = deepcopy(input_data["bus"]["$bus_id_"])
+    input_data["bus"]["$bus_id"]["lat"] = 54.990994
+    input_data["bus"]["$bus_id"]["lon"] = 3.279410
+    input_data["bus"]["$bus_id"]["string"] = "NSOW"
+    input_data["bus"]["$bus_id"]["source_id"] = ["bus", bus_id]
+    input_data["bus"]["$bus_id"]["index"] = input_data["bus"]["$bus_id"]["number"] = bus_id
+
+    gen_id_ = maximum(parse.(Int, collect(keys(input_data["gen"]))))
+    gen_id = maximum(parse.(Int, collect(keys(input_data["gen"])))) + 1
+    input_data["gen"]["$gen_id"] = deepcopy(input_data["gen"]["$gen_id_"])
+    input_data["gen"]["$gen_id"]["source_id"] = ["gen", gen_id]
+    input_data["gen"]["$gen_id"]["index"] = gen_id
+    input_data["gen"]["$gen_id"]["gen_bus"] = bus_id
+    input_data["gen"]["$gen_id"]["pmax"] = power / input_data["baseMVA"]
+    input_data["gen"]["$gen_id"]["type"] = "Offshore Wind"
+    input_data["gen"]["$gen_id"]["node"] = "NSOW"
+    input_data["gen"]["$gen_id"]["cost"] = [0.0 3500.0 0.0]
+
+    add_ns_branches!(input_data; branch_cap = branch_cap)
+
+    nodal_data["NSOW"] = Dict{String, Any}("generation" => Dict("Offshore Wind" => Dict("timeseries" => [], "capacity" => (power))), "demand" => zeros(size(nodal_data["UK00"]["demand"])))
+    nodal_data["NSOW"]["generation"]["Offshore Wind"]["timeseries"]= nodal_data["UK00"]["generation"]["Offshore Wind"]["timeseries"] ./ maximum(nodal_data["UK00"]["generation"]["Offshore Wind"]["timeseries"]) * power
+
+
+    return input_data, nodal_data
+end
+
+
+function add_ns_branches!(input_data; branch_cap = 0)
+    for zone in ["FR00", "UK00", "BE00", "NL00", "DE00", "NOS0","SE03", "DKW1"]
+        branch_id_ = maximum(parse.(Int, collect(keys(input_data["branch"]))))
+        branch_id = maximum(parse.(Int, collect(keys(input_data["branch"])))) + 1
+        input_data["branch"]["$branch_id"] = deepcopy(input_data["branch"]["$branch_id_"])
+        input_data["branch"]["$branch_id"]["index"] =  input_data["branch"]["$branch_id"]["number_id"] = branch_id
+        input_data["branch"]["$branch_id"]["source_id"] = ["branch", branch_id]  
+        input_data["branch"]["$branch_id"]["rate_a"] = input_data["branch"]["$branch_id"]["rate_i"] = input_data["branch"]["$branch_id"]["rate_p"] = branch_cap / input_data["baseMVA"]
+        input_data["branch"]["$branch_id"]["delta_cap_max"]  = 1000.0
+        input_data["branch"]["$branch_id"]["name"] = join(zone, "-NSOW")
+        for (b, bus) in input_data["bus"]
+            if bus["string"] == zone
+                input_data["branch"]["$branch_id"]["f_bus"] = parse(Int, b)
+            elseif bus["string"] == "NSOW"
+                input_data["branch"]["$branch_id"]["t_bus"] = parse(Int, b)
+            end
+        end
+        input_data["branch"]["$branch_id"]["offshore"] = true
+    end
+
+    return input_data
+end
+
+
+function branch_capacity_cost!(input_data)
+    for (b, branch) in input_data["branch"]
+        distance = latlon2distance(input_data, branch)
+        if haskey(branch, "offshore") && branch["offshore"] == true
+            # Assumption: 2M€ per km for 2 GW + 700 M€ for converter costs for 2 GW           
+            branch["capacity_cost"] = ((1000.0 * distance + 3.5e5) / (25 * 8760)) * input_data["baseMVA"]
+
+        else
+            branch["delta_cap_max"] = branch["rate_a"] * 2 # Allow to double capacity
+            # Assumption: 5M€ per km for 3 GVA
+            # -> 167 k€ / km / (100 MVA)
+            branch["capacity_cost"] = 167e5 * distance / (25 * 8760) 
+        end
+    end
+end
+
+function scale_costs!(input_data, hours)
+    for (g, gen) in input_data["gen"]
+        gen["cost"] = gen["cost"] .* 8760 / length(hours)
+    end
+
+    for (b, branch) in input_data["branch"]
+        branch["capacity_cost"] = branch["capacity_cost"] .* 8760 / length(hours)
+    end
+
+    return input_data
+end
+
+function add_offshore_wind_farms!(input_data)
+    xf = XLSX.readxlsx(joinpath("./data_sources/offshore_wind_farms.xlsx"))
+    XLSX.sheetnames(xf)
+    for r in XLSX.eachrow(xf["OWFHUBS"])
+        i = XLSX.row_number(r)
+        if i > 1 # compensate for header
+            zone = r[1]
+            rating = r[2]
+            lat = r[3]
+            lon = r[4]
+            cost = 0 * input_data["baseMVA"]
+            add_bus!(input_data, zone, lat, lon)
+            node = maximum([bus["index"] for (b, bus) in input_data["bus"]])
+            print(zone, "\n")
+            add_gen!(input_data, zone, cost, node, rating, "Offshore Wind")
+        end
+    end
+
+    return input_data
+end
+
+function add_offshore_wind_connections!(input_data)
+    dc_voltage = 525
+    for (g, gen) in input_data["gen"]
+        if haskey(gen, "name") && gen["name"] == "OWFHUB"
+            ow_bus = gen["gen_bus"]
+            ow_zone = gen["zone"]
+            distance = 5000
+            onshore_bus = 0
+            for (b, bus) in input_data["bus"]
+                if bus["zone"] == ow_zone && bus["name"] != "OWFHUB"
+                    d = latlon2distance(input_data, ow_bus, parse(Int, b))
+                    if d <= distance
+                        onshore_bus = parse(Int, b)
+                        distance = d
+                    end
+                end
+            end
+
+            # Add offshore dc bus:
+            input_data, dc_bus_idx_ow = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$ow_bus"]["lat"], lon = input_data["bus"]["$ow_bus"]["lon"])
+            # Add offshore converter:    
+            add_converter!(input_data, ow_bus, dc_bus_idx_ow, gen["pmax"])
+            # Add onshore dc bus:
+            input_data, dc_bus_idx_on = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$onshore_bus"]["lat"], lon = input_data["bus"]["$onshore_bus"]["lon"])
+            # Add onshore converter:
+            add_converter!(input_data, onshore_bus, dc_bus_idx_on, gen["pmax"])
+            # Add offshore cable:
+            add_dc_branch!(input_data, dc_bus_idx_ow, dc_bus_idx_on, gen["pmax"])
+        end
+    end
+
+    return input_data
 end
