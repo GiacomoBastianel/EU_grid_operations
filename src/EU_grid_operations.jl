@@ -20,6 +20,7 @@ import Clustering
 import Plots
 import PlotlyJS
 import ColorSchemes
+import StatsBase
 # Create our module level logger (this will get precompiled)
 const _LOGGER = Memento.getlogger(@__MODULE__)
 
@@ -39,5 +40,6 @@ include("core/latlon2distance.jl")
 include("io/process_results.jl")
 include("io/plotting.jl")
 include("core/batch_opf.jl")
+include("core/tnep_candidates.jl")
 
 end # module EU_grid_operations

@@ -123,7 +123,7 @@ for (hour_idx, hour) in res_cl
 
     for (cont, contingency) in contingencies[hour_idx]
         print("================= hour:", hour_idx," =========== contingency:", contingency ,"=============", "\n")
-        grid_data_rd = _EUGO.prepare_redispatch_data(res_cl, zone_grid_hourly, parse(Int, hour_idx); contingency = contingency, border_slack = 0.01)
+        grid_data_rd = _EUGO.prepare_redispatch_data(res_cl, zone_grid_hourly, parse(Int, hour_idx); contingency = contingency, border_slack = 0.01, rd_cost_factor = 2)
 
         ##### RUN RD_OPF without control
         s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "fix_converter_setpoints" => true)
@@ -186,5 +186,4 @@ print("Maximum benefits of HVDC control: ", sum([hour["max_delta_rd_cost"] for (
 
 for (h, hour) in res_rd
     print(h, " ", hour["mean_delta_rd_cost"], "\n")
-
 end

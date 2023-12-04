@@ -261,7 +261,7 @@ function fix_data!(grid_data)
     return grid_data
 end
 
-function add_north_sea_wind_zonal!(input_data, nodal_data, power; branch_cap = 0)
+function add_north_sea_wind_zonal!(input_data, nodal_data, power, co2_cost; branch_cap = 0)
     # first remove OWF capacity of the existing model for the particular zones
     for (g, gen) in input_data["gen"]
         if gen["type"] == "Offshore Wind"
@@ -270,6 +270,9 @@ function add_north_sea_wind_zonal!(input_data, nodal_data, power; branch_cap = 0
                 gen["pmax"] = 0.0
                 gen["gen_status"] = 0
             end
+        end
+        if gen["type"] !== "Offshore Wind" && gen["type"] !== "Onshore Wind" && gen["type"] !== "Solar PV" && gen["type"] !== "Nuclear"
+            gen["cost"][1] = gen["cost"][1] + co2_cost * input_data["baseMVA"]
         end
     end
     bus_id_ = maximum(parse.(Int, collect(keys(input_data["bus"]))))
@@ -392,19 +395,29 @@ function add_offshore_wind_connections!(input_data)
                     end
                 end
             end
-
+            dc_bus_name_off = join([gen["zone"],"_OWFHUB_", gen["gen_bus"]])
+            dc_bus_name_on = join([gen["zone"],"_ON_",input_data["bus"]["$onshore_bus"]["index"]])
             # Add offshore dc bus:
-            input_data, dc_bus_idx_ow = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$ow_bus"]["lat"], lon = input_data["bus"]["$ow_bus"]["lon"])
+            input_data, dc_bus_idx_ow = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$ow_bus"]["lat"], lon = input_data["bus"]["$ow_bus"]["lon"], name = dc_bus_name_off)
             # Add offshore converter:    
             add_converter!(input_data, ow_bus, dc_bus_idx_ow, gen["pmax"])
             # Add onshore dc bus:
-            input_data, dc_bus_idx_on = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$onshore_bus"]["lat"], lon = input_data["bus"]["$onshore_bus"]["lon"])
+            input_data, dc_bus_idx_on = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$onshore_bus"]["lat"], lon = input_data["bus"]["$onshore_bus"]["lon"], name = dc_bus_name_on)
             # Add onshore converter:
             add_converter!(input_data, onshore_bus, dc_bus_idx_on, gen["pmax"])
             # Add offshore cable:
             add_dc_branch!(input_data, dc_bus_idx_ow, dc_bus_idx_on, gen["pmax"])
         end
     end
+
+    return input_data
+end
+
+function add_offshore_hvdc_connections!(input_data)
+    dc_voltage = 525
+
+    add_dc_branch!(input_data, dc_bus_idx_ow, dc_bus_idx_on, pmax)
+ 
 
     return input_data
 end

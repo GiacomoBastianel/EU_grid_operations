@@ -41,6 +41,7 @@ fetch_data = true
 hours = 1:8760
 ns_wind_power = 300e3 # in MW
 file_name = "NSOW_zonal"
+co2_cost = 45
 
 # Load grid and scenario data
 if fetch_data == true
@@ -52,7 +53,7 @@ end
 # Construct RES time and demand series, installed capacities on nodal (zonal) data
 input_data, nodal_data = _EUGO.construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; co2_cost = 50.0)
 
-_EUGO.add_north_sea_wind_zonal!(input_data, nodal_data, ns_wind_power; branch_cap = 150e3)
+_EUGO.add_north_sea_wind_zonal!(input_data, nodal_data, ns_wind_power, co2_cost; branch_cap = 150e3)
 input_data_raw = deepcopy(input_data)
 
 number_of_hours = 8760

@@ -10,7 +10,7 @@ using EU_grid_operations; const _EUGO = EU_grid_operations
 using Plots
 import JuMP
 import JSON
-import CBAOPF
+import CbaOPF
 import DataFrames; const _DF = DataFrames
 import CSV
 import ExcelFiles; const _EF = ExcelFiles
@@ -51,7 +51,7 @@ load_data = true
 zone = "DE00"
 links = Dict("Suedostlink" => [] , "Suedostlink" => [], "Ultranet" => [])
 ############ LOAD EU grid data
-file = "./data_sources/European_grid.json"
+file = "./data_sources/European_grid_no_nseh.json"
 EU_grid = _PM.parse_file(file)
 _PMACDC.process_additional_data!(EU_grid)
 _EUGO.add_load_and_pst_properties!(EU_grid)
@@ -75,7 +75,7 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 _EUGO.fix_data!(EU_grid)
 
 # Isolate zone: input is vector of strings
-zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = 0.01)
+# zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = 0.01)
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 

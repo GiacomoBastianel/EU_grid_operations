@@ -123,6 +123,6 @@ function get_branch_flows(hour_start, hour_end, batch_size, file_name::String)
          end
     end
 
-    return ac_branch_flows, dc_branch_flows
+    return ac_branch_flows, dc_branch_flows, result
 end
 

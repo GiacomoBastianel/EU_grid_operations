@@ -29,14 +29,13 @@ scenario = "GA2040"
 climate_year = "1982"
 load_data = true
 use_case = "nsow"
-only_hvdc_case = false
 hour_start_idx = 1 
-hour_end_idx =  24
-batch_size = 1
+hour_end_idx =  48
+batch_size = 48
 ############ LOAD EU grid data
 file = "data_sources/European_grid_no_nseh.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year, ".json"]))
-gurobi = Gurobi.Optimizer
+gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 EU_grid = _PM.parse_file(file)
 _PMACDC.process_additional_data!(EU_grid)
 _EUGO.add_load_and_pst_properties!(EU_grid)
@@ -101,15 +100,12 @@ open(zonal_result_file_name) do f
 end
 
 # Start runnning hourly OPF calculations
-
-
-s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
+s = Dict("output" => Dict("branch_flows" => true, "duals" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 # This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
 _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 
-
-# Psot processing
-ac_branch_flows, dc_branch_flows = _EUGO.get_branch_flows(hour_start_idx, hour_end_idx, batch_size, output_file_name) 
+# Post processing
+ac_branch_flows, dc_branch_flows, opf_result = _EUGO.get_branch_flows(hour_start_idx, hour_end_idx, batch_size, output_file_name) 
 
 flows_ac = Dict{String, Any}()
 flows_dc = Dict{String, Any}()
@@ -121,5 +117,42 @@ for (b, branch) in dc_branch_flows
     flows_dc[b] = abs.(dc_branch_flows[b]) ./ zone_grid["branchdc"][b]["rateA"]
 end
 
-plot_file_name = joinpath("results", "plots", join([use_case,"_",scenario,"_", climate_year,"_grid.pdf"]))
-_EUGO.plot_grid(zone_grid, plot_file_name; color_branches = true, flows_ac = flows_ac, flows_dc = flows_dc, maximum_flows = false) 
+plot_file_name = joinpath("results", "plots", join([use_case,"_",scenario,"_", climate_year,"_flows.pdf"]))
+_EUGO.plot_grid(zone_grid, plot_file_name; color_branches = true, flows_ac = flows_ac, flows_dc = flows_dc, maximum_flows = true, plot_node_numbers_dc = true)
+
+# sensitive_buses, total_variation_sorted, sorted_buses, bus_duals, av_bus_duals = _EUGO.get_tnep_candidates(opf_result, zone_grid)
+
+# for b in sensitive_buses
+#     if b[5] > 0
+#         print(b[1], "\n")
+#     end
+# end
+
+
+# duals = [dual for (b, dual) in av_bus_duals]
+# Plots.plot(duals)
+
+# dual_diff_matrix = zeros(length(duals), length(duals))
+# for i = 1:length(duals)
+#     for j = 1:length(duals)
+#         dual_diff_matrix[i, j] = abs(duals[i] - duals[j])
+#     end
+# end
+
+
+# plot_file_name = joinpath("results", "plots", join([use_case,"_",scenario,"_", climate_year,"_duals_diff.pdf"]))
+# p_dual = Plots.heatmap(1:size(dual_diff_matrix,1),
+#     1:size(dual_diff_matrix,2), dual_diff_matrix,
+#     c = cgrad(ColorSchemes.jet),
+#     xlabel="bus id", ylabel="bus id")
+
+# Plots.savefig(p_dual, plot_file_name )
+
+# # number_of_candiates = 100
+# # buspairs = [(0, 0) for i in 1:number_of_candiates]
+# # for i = 1:number_of_candiates
+# #     bp = findmax(dual_diff_matrix)
+# #     buspairs[i] = (bp[2][1], bp[2][2])
+# #     dual_diff_matrix[bp[2][1], bp[2][2]] = 0
+# #     dual_diff_matrix[bp[2][2], bp[2][1]] = 0
+# # end
