@@ -95,6 +95,22 @@ ac_voltage = 220 #kV
 zone_grid_ei = add_Belgian_energy_island(zone_grid,links)
 
 
-for (b_id,b) in zone_grid["bus"]
-    print(b["base_kv"],"\n")
-end
+# FROM NOW ON STILL TO TRY
+### Carry out OPF
+# Start runnning hourly OPF calculations
+s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
+
+# without investment 
+batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
+# with investment 
+batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_inv)
+
+
+## Load and process results
+result_con = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, zone_grid, timeseries_data, number_of_clusters, output_file_name)
+result_con_inv = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, zone_grid, timeseries_data, number_of_clusters, output_file_name_inv)
+
+hour_factor = 8760/(hour_end_idx - hour_start_idx + 1)
+print("Total cost = ", result_con["total_cost"] / 1e6 * hour_factor, " MEuro", "\n")
+print("Total cost with investment = ", result_con_inv["total_cost"] / 1e6 * hour_factor, " MEuro","\n")
+
