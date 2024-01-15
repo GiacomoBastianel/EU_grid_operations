@@ -87,6 +87,34 @@ function add_dc_bus!(grid_data, dc_voltage; dc_bus_id = nothing, lat = 0, lon = 
     return grid_data, dc_bus_idx
 end
 
+function add_ac_bus!(grid_data, ac_voltage; ac_bus_id = nothing, lat = 0, lon = 0)
+    if isnothing(ac_bus_id)
+        ac_bus_idx = maximum([bus["index"] for (b, bus) in grid_data["busdc"]]) + 1
+    else
+        ac_bus_idx = ac_bus_id
+    end
+    grid_data["bus"]["$ac_bus_idx"] = Dict{String, Any}()  # create dictionary for each bus
+    grid_data["bus"]["$ac_bus_idx"]["lat"] = lat
+    grid_data["bus"]["$ac_bus_idx"]["lon"] = lon
+    grid_data["bus"]["$ac_bus_idx"]["bus_i"] = ac_bus_idx # assign dc bus idx
+    grid_data["bus"]["$ac_bus_idx"]["name"] = "EI_BE"
+    grid_data["bus"]["$ac_bus_idx"]["bus_type"] = 2 # assign bus type
+    grid_data["bus"]["$ac_bus_idx"]["vmax"] = 1.05 # maximum voltage 1.1 pu
+    grid_data["bus"]["$ac_bus_idx"]["qd"] = 0 # demand at DC bus, normally 0
+    grid_data["bus"]["$ac_bus_idx"]["gs"] = 0 # demand at DC bus, normally 0
+    grid_data["bus"]["$ac_bus_idx"]["bs"] = 0 # demand at DC bus, normally 0
+    grid_data["bus"]["$ac_bus_idx"]["source_id"] = [] # demand at DC bus, normally 0
+    push!(grid_data["bus"]["$ac_bus_idx"]["source_id"],"bus") # demand at DC bus, normally 0
+    push!(grid_data["bus"]["$ac_bus_idx"]["source_id"],ac_bus_idx) # demand at DC bus, normally 0
+    grid_data["bus"]["$ac_bus_idx"]["area"] = 1 # default, no meaning
+    grid_data["bus"]["$ac_bus_idx"]["vmin"] = 0.95 # minimum voltage 0.9 pu
+    grid_data["bus"]["$ac_bus_idx"]["index"] = ac_bus_idx # not used
+    grid_data["bus"]["$ac_bus_idx"]["va"] = 0 # dc voltage set point 1 particular
+    grid_data["bus"]["$ac_bus_idx"]["vm"] = 0 # dc voltage set point 1 particular
+    grid_data["bus"]["$ac_bus_idx"]["base_kv"] = ac_voltage # Binary indicator if reactor is installed
+    grid_data["bus"]["$ac_bus_idx"]["pd"] = 0 # demand at DC bus, normally 0
+    return grid_data, ac_bus_idx
+end
 
 function add_converter!(grid_data, ac_bus_idx, dc_bus_idx, power_rating; zone = nothing, islcc = 0, conv_id = nothing, status = 1)
     if isnothing(conv_id)
@@ -94,6 +122,7 @@ function add_converter!(grid_data, ac_bus_idx, dc_bus_idx, power_rating; zone = 
     else
         conv_idx = conv_id
     end
+    print("ac_bus_idx IS",ac_bus_idx,"\n")
     grid_data["convdc"]["$conv_idx"] = Dict{String, Any}()  # create dictionary for each converter
     grid_data["convdc"]["$conv_idx"]["busdc_i"] = dc_bus_idx  # assign dc bus idx
     grid_data["convdc"]["$conv_idx"]["busac_i"] = ac_bus_idx  # assign ac bus idx
@@ -139,6 +168,37 @@ function add_converter!(grid_data, ac_bus_idx, dc_bus_idx, power_rating; zone = 
     return grid_data
 end
 
+function add_generator!(grid_data, ac_bus_idx, gen_bus, power_rating; gen_id = nothing, status = 1) # To be done later
+    if isnothing(gen_id)
+        gen_idx = maximum([gen["index"] for (g, gen) in grid_data["gen"]]) + 1
+    else
+        gen_idx = gen_id
+    end
+    grid_data["gen"]["$gen_idx"] = Dict{String, Any}()  # create dictionary for each converter
+    grid_data["gen"]["$gen_idx"]["zone"] = "BE"  
+    grid_data["gen"]["$gen_idx"]["type_tyndp"] = "Offshore Wind"  
+    grid_data["gen"]["$gen_idx"]["model"] = 2  
+    grid_data["gen"]["$gen_idx"]["gen_bus"] = gen_bus
+    grid_data["gen"]["$gen_idx"]["pmax"] = power_rating 
+    grid_data["gen"]["$gen_idx"]["country"] = 4
+    grid_data["gen"]["$gen_idx"]["vg"] = 1.0
+    grid_data["gen"]["$gen_idx"]["source_id"] = []
+    push!(grid_data["gen"]["$gen_idx"]["source_id"],"gen")
+    push!(grid_data["gen"]["$gen_idx"]["source_id"],gen_idx)
+    grid_data["gen"]["$gen_idx"]["index"] = gen_idx
+    grid_data["gen"]["$gen_idx"]["cost"] = []
+    push!(grid_data["gen"]["$gen_idx"]["cost"],5900.0)
+    push!(grid_data["gen"]["$gen_idx"]["cost"],0.0)
+    grid_data["gen"]["$gen_idx"]["qmax"] = 6.0 
+    grid_data["gen"]["$gen_idx"]["gen_status"] = 1
+    grid_data["gen"]["$gen_idx"]["qmin"] = - 6.0 
+    grid_data["gen"]["$gen_idx"]["type"] = "Offshore Wind"  
+    grid_data["gen"]["$gen_idx"]["pmin"] = 0.0 
+    grid_data["gen"]["$gen_idx"]["ncost"] = 2 
+    
+    return grid_data
+end
+
 function add_dc_branch!(grid_data, fbus_dc, tbus_dc, power_rating; status = 1, r = 0.06, branch_id = nothing)
     if isnothing(branch_id)
         dc_br_idx = maximum([branch["index"] for (br, branch) in grid_data["branchdc"]]) + 1
@@ -159,3 +219,125 @@ function add_dc_branch!(grid_data, fbus_dc, tbus_dc, power_rating; status = 1, r
 
     return grid_data
 end
+
+function add_ac_branch!(grid_data, fbus, tbus, power_rating; status = 1, r = 0.001, branch_id = nothing)
+    if isnothing(branch_id)
+        br_idx = maximum([branch["index"] for (br, branch) in grid_data["branch"]]) + 1
+    else
+        br_idx = branch_id
+    end
+    grid_data["branch"]["$br_idx"] = Dict{String, Any}()
+    grid_data["branch"]["$br_idx"]["f_bus"] = fbus
+    grid_data["branch"]["$br_idx"]["t_bus"] = tbus
+    grid_data["branch"]["$br_idx"]["br_r"] = r
+    grid_data["branch"]["$br_idx"]["br_x"] = 0.001   # zero in steady state
+    grid_data["branch"]["$br_idx"]["rate_a"] = power_rating
+    grid_data["branch"]["$br_idx"]["rate_b"] = power_rating
+    grid_data["branch"]["$br_idx"]["rate_c"] = power_rating
+    grid_data["branch"]["$br_idx"]["status"] = status
+    grid_data["branch"]["$br_idx"]["index"] = br_idx
+    grid_data["branch"]["$br_idx"]["interconnector"] = false
+    grid_data["branch"]["$br_idx"]["transformer"] = false
+    grid_data["branch"]["$br_idx"]["type"] = "AC line"
+    grid_data["branch"]["$br_idx"]["tap"] = 1.0
+    grid_data["branch"]["$br_idx"]["g_to"] = 1.0
+    grid_data["branch"]["$br_idx"]["g_fr"] = 1.0
+    grid_data["branch"]["$br_idx"]["b_fr"] = 10.0
+    grid_data["branch"]["$br_idx"]["b_to"] = 10.0
+    grid_data["branch"]["$br_idx"]["base_kv"] = 220
+    grid_data["branch"]["$br_idx"]["source_id"] = []
+    push!(grid_data["branch"]["$br_idx"]["source_id"],"branch")
+    push!(grid_data["branch"]["$br_idx"]["source_id"],br_idx)
+    grid_data["branch"]["$br_idx"]["br_status"] = 1
+    grid_data["branch"]["$br_idx"]["shift"] = 0.0
+    grid_data["branch"]["$br_idx"]["ratio"] = 1
+    grid_data["branch"]["$br_idx"]["angmin"] = - 1.0472
+    grid_data["branch"]["$br_idx"]["angmax"] = 1.0472
+    return grid_data
+end
+
+function add_Belgian_energy_island(grid_data,links)
+    # AC bus locations: 
+    # EI_AC_1: lat: 51.646504 , lon: 2.678687 
+    # EI_AC_2: lat: 51.646504 , lon: 2.678687 (same as EI_AC_1)
+
+    # DC bus locations:
+    # EI_DC_1: lat: 51.6468 ,  lon: 2.778687 (Energy island)
+    # EI_DC_2: lat: 51.780669, lon: 3.006469 (Switchyard)
+    # EI_DC_3: lat: 51.888354, lon: 1.209372 (Onshore UK)
+    # Gezelle DC bus: lat: 51.2747, lon: 3.22923 (Onshore BE)
+
+    # Rating: 2 GW towards Belgium, 525 kV
+    # Rating: 1.4 GW towards the UK, 525 kV
+
+    power_rating_BE = 20.0
+    power_rating_UK = 14.0
+
+    dc_voltage = 525
+    ac_voltage = 220 #kV
+    grid_data_inv = deepcopy(grid_data)
+    for (key, link) in links
+        if key == "Energy Island"
+            # First Step: Building the energy island with an AC bus
+            grid_data_inv, ac_bus_idx_ei = add_ac_bus!(grid_data_inv, ac_voltage; lat = 51.646504 , lon = 2.678687)
+
+            #Add 6 ac_branches to Gezelle
+            add_ac_branch!(grid_data_inv, ac_bus_idx_ei, 131, 4.0)
+            add_ac_branch!(grid_data_inv, ac_bus_idx_ei, 131, 4.0)
+            add_ac_branch!(grid_data_inv, ac_bus_idx_ei, 131, 4.0)
+            add_ac_branch!(grid_data_inv, ac_bus_idx_ei, 131, 4.0)
+            add_ac_branch!(grid_data_inv, ac_bus_idx_ei, 131, 4.0)
+            add_ac_branch!(grid_data_inv, ac_bus_idx_ei, 131, 4.0)
+
+            # Second Step: Building the DC part of the energy island with three DC buses
+            # DC bus energy island
+            grid_data_inv, dc_bus_idx_ei = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.6468 , lon = 2.778687)
+            add_converter!(grid_data_inv, ac_bus_idx_ei, dc_bus_idx_ei, 20.0) # Converter between AC and DC parts of the energy island
+
+            # DC switchyard bus energy island
+            grid_data_inv, dc_bus_idx_switchyard = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.7806 , lon = 3.006469)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_ei, dc_bus_idx_switchyard, 20.0)
+
+            # DC UK bus energy island
+            grid_data_inv, dc_bus_idx_uk = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.8883 , lon = 1.209372)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_uk, dc_bus_idx_switchyard, 14.0)
+
+            # DC onshore UK bus energy island
+            grid_data_inv, dc_bus_idx_uk_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.880090 , lon = 1.192580) # onshore
+            ac_bus_idx_uk = find_closest_bus(grid_data_inv,51.880090 ,1.192580)
+            grid_data_inv["bus"]["5779"]["base_kV"] = 400
+            print("PRINTING BUS", ac_bus_idx_uk, "\n")
+            add_converter!(grid_data_inv, ac_bus_idx_uk, dc_bus_idx_uk_onshore, 14.0)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_switchyard, dc_bus_idx_uk_onshore, 14.0)
+
+            # DC onshore BE bus energy island (next to Gezelle)
+            grid_data_inv, dc_bus_idx_be_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.269453 , lon = 3.211539) # onshore
+            add_converter!(grid_data_inv, 131, dc_bus_idx_be_onshore, 14.0)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_switchyard, dc_bus_idx_be_onshore, 20.0)
+
+            # Adding generators for the energy island
+            add_generator!(grid_data, ac_bus_idx_ei, ac_bus_idx_ei, 35.0; status = 1)
+        end
+    end
+    return grid_data_inv
+end
+
+#=
+#for (b_id,b) in EU_grid["bus"]
+for i in 1:length(EU_grid["bus"])
+    if EU_grid["bus"]["$i"]["zone"] == "BE"
+        print([i,EU_grid["bus"]["$i"]["name"],EU_grid["bus"]["$i"]["lat"],EU_grid["bus"]["$i"]["lon"]],"\n")
+    end
+end
+
+for (br_id,br) in EU_grid["branch"]
+    if br["f_bus"] == 131 || br["t_bus"] == 131
+        print(br_id,"\n")
+    end
+end
+EU_grid["branch"]["215"]
+EU_grid["branch"]["216"]
+EU_grid["branch"]["217"]
+
+EU_grid["bus"]["131"]
+=#

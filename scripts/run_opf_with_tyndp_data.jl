@@ -37,7 +37,7 @@ output_cba = "DE_HVDC"
 number_of_clusters = 20
 number_of_hours_rd = 5
 hour_start = 1
-hour_end = 8760
+hour_end = 24
 ############ LOAD EU grid data
 file = "./data_sources/European_grid.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
@@ -65,24 +65,43 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 
 # Isolate zone: input is vector of strings, if you need to relax the fixing border flow assumptions use:
 # _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = x), this will leas to (1-slack)*xb_flow_ref < xb_flow < (1+slack)*xb_flow_ref
-zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"])
+zone_grid = _EUGO.isolate_zones(EU_grid, ["BE","DE","NL","FR","LU","UK"])
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
 # (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
-timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, zone_mapping; zone = "DE")
+timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping)#; zone = "BE")
 
 push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)) 
 
 # Start runnning hourly OPF calculations
 hour_start_idx = 1 
-hour_end_idx =  8760
+hour_end_idx =  24
 
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 # This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
 result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
 
 # An alternative is to run it in chuncks of "batch_size", which will store the results as json files, e.g. hour_1_to_batch_size, ....
-batch_size = 730
+batch_size = 24
 _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 
+
+for (r_id,r) in result
+    print(r["objective"]*100,"\n")
+end
+
+obj = sum(r["objective"] for (r_id,r) in result)*100
+
+congested_lines = []
+for (br_id,br) in EU_grid["branch"]
+    if haskey(result["1"]["solution"]["branch"],br_id)
+        if abs(result["1"]["solution"]["branch"][br_id]["pt"])/br["rate_a"] > 0.9
+            print(br_id,"\n")
+            push!(congested_lines,parse(Int64,br_id))
+        end
+    end
+end
+
+EU_grid["branch"]["2025"]
+EU_grid["bus"]["1351"]

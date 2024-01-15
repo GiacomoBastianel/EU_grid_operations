@@ -39,7 +39,7 @@ scenario = "GA2040"
 climate_year = "1982"
 fetch_data = true
 hours = 1:8760
-ns_wind_power = 300e3 # in MW
+ns_wind_power = 3.5e3 # in MW
 file_name = "NSOW_zonal"
 
 # Load grid and scenario data
@@ -55,7 +55,7 @@ input_data, nodal_data = _EUGO.construct_data_dictionary(ntcs, capacity, nodes, 
 _EUGO.add_north_sea_wind_zonal!(input_data, nodal_data, ns_wind_power; branch_cap = 150e3)
 input_data_raw = deepcopy(input_data)
 
-number_of_hours = 8760
+number_of_hours = 24
 # Create dictionary for writing out results
 result = Dict{String, Any}("$hour" => nothing for hour in 1:number_of_hours)
 for hour = 1:number_of_hours
@@ -65,6 +65,8 @@ for hour = 1:number_of_hours
     # Solve Network Flow OPF using PowerModels
     result["$hour"] = _PM.solve_opf(input_data, PowerModels.NFAPowerModel, gurobi) 
 end
+
+obj = [result[i]["objective"] for i in keys(result)]
 
 ## Write out JSON files
 # Result file, with hourly results

@@ -28,7 +28,7 @@ function run_batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data,
     result = Dict{String, Any}()
     
     for hour_idx in hour_start_idx : hour_end_idx
-        hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, timeseries_data) # write hourly values into the grid data
+        _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, timeseries_data) # write hourly values into the grid data
         result["$hour_idx"] = CbaOPF.solve_cbaopf(zone_grid_hourly, _PM.DCPPowerModel, solver; setting = setting) # solve the OPF 
     end
 

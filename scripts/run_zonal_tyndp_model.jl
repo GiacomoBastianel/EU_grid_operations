@@ -32,7 +32,7 @@ gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 # Number of hours: 1 - 8760
 # Fetch data: true/false, to parse input data (takes ~ 1 min.)
 
-scenario = "GA2030"
+scenario = "GA2040"
 climate_year = "2007"
 fetch_data = true
 number_of_hours = 8760
@@ -64,8 +64,7 @@ for hour = 1:number_of_hours
     result["$hour"] = _PM.solve_opf(input_data, PowerModels.NFAPowerModel, gurobi) 
 end
 
-## Write out JSON files
-# Result file, with hourly results
+## Write out JSON files # Result file, with hourly results
 json_string = JSON.json(result)
 result_file_name = join(["./results/result_zonal_tyndp_", scenario,"_", climate_year, ".json"])
 open(result_file_name,"w") do f
