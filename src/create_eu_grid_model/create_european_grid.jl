@@ -521,7 +521,7 @@ function create_european_grid(;output_filename::String = "./data_sources/Europea
             European_grid["zonal_generation_capacity"]["$idx"]["Nuclear"] =  xf["THERMAL_OVERVIEW"]["F2:F43"][idx]/European_grid["baseMVA"]
             European_grid["zonal_generation_capacity"]["$idx"]["Heavy oil old 1 Bio"] =  xf["THERMAL_OVERVIEW"]["G2:G43"][idx]/European_grid["baseMVA"]
         # Demand
-        European_grid["zonal_peak_demand"]["$idx"] = xf["THERMAL_OVERVIEW"]["B2:B43"][idx]/European_grid["baseMVA"]
+        European_grid["zonal_peak_demand"]["$idx"] = xf["DEMAND_OVERVIEW"]["B2:B44"][idx]/European_grid["baseMVA"]
     end
     ######
     # Making sure all the keys for PowerModels are there
