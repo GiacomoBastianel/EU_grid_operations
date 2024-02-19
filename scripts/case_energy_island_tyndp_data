@@ -25,7 +25,7 @@ using StatsBase
 import StatsPlots
 
 ######### DEFINE INPUT PARAMETERS
-scenario = "GA2030"
+scenario = "GA2040"
 climate_year = "2007"
 load_data = true
 use_case = "de_hvdc_backbone"
@@ -41,6 +41,13 @@ hour_end = 8760
 ############ LOAD EU grid data
 file = "./data_sources/European_grid.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
+
+results_folder = "/Users/giacomobastianel/Desktop/YRS_paper/Results"
+
+output_file_name = joinpath(results_folder, join([use_case,"_",scenario,"_", climate_year]))
+output_file_name_inv = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
+
+
 gurobi = Gurobi.Optimizer
 EU_grid = _PM.parse_file(file)
 _PMACDC.process_additional_data!(EU_grid)
@@ -66,7 +73,17 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 # Isolate zone: input is vector of strings, if you need to relax the fixing border flow assumptions use:
 # _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = x), this will leas to (1-slack)*xb_flow_ref < xb_flow < (1+slack)*xb_flow_ref
 zone_grid = _EUGO.isolate_zones(EU_grid, ["DE","BE","NL","UK","FR","LU"]; border_slack = 0.01)
+#zone_grid = _EUGO.isolate_zones(EU_grid, "BE"; border_slack = 0.01)
+
+
+for (g_id,g) in zone_grid["gen"]
+    if g["type_tyndp"] == "Offshore Wind"
+        g["cost"][1] = 5900.0
+    end
+end
+
 timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping)
+#timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zone = "BE")
 
 # Determine hourly cross-border flows and add them to time series data
 push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)) 
@@ -91,26 +108,147 @@ end
 ###################
 #####  Adding HVDC links
 ac_voltage = 220 #kV
-#zone_grid_ei = _EUGO.add_Belgian_energy_island(zone_grid,links)
-zone_grid_ei = add_Belgian_energy_island(zone_grid,links)
+zone_grid_ei = _EUGO.add_Belgian_energy_island(zone_grid,links)
+#zone_grid_ei = add_Belgian_energy_island(zone_grid,links)
+
+zone_grid_ei["gen"]["7450"] = deepcopy(zone_grid_ei["gen"]["3922"])
+zone_grid_ei["gen"]["7450"]["gen_bus"] = 10210 
+zone_grid_ei["gen"]["7450"]["pmax"] = 35.0
+zone_grid_ei["gen"]["7450"]["source_id"][2] = 7450
+zone_grid_ei["gen"]["7450"]["index"] = 7450
+zone_grid_ei["gen"]["7450"]["cost"][1] = 3000.0
 
 
-# FROM NOW ON STILL TO TRY
+gen_costs,inertia_constants,emission_factor_CO2,start_up_cost,emission_factor_NOx,emission_factor_SOx = gen_values()
+assigning_gen_values(zone_grid)
+assigning_gen_values(zone_grid_ei)
+
+# FROM NOW ON STILL TO FINISH
 ### Carry out OPF
 # Start runnning hourly OPF calculations
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 
+hour_start_idx = 1
+hour_end_idx = 720
+batch_size = 24
+
+
 # without investment 
-batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
+results_no_ei = batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 # with investment 
-batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_inv)
+results_ei = batch_opf(hour_start_idx, hour_end_idx, zone_grid_ei, timeseries_data, gurobi, s, batch_size, output_file_name_inv)
 
 
 ## Load and process results
 result_con = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, zone_grid, timeseries_data, number_of_clusters, output_file_name)
-result_con_inv = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, zone_grid, timeseries_data, number_of_clusters, output_file_name_inv)
+result_con_inv = _EUGO.process_results(hour_start_idx, hour_end_idx, batch_size, zone_grid_ei, timeseries_data, number_of_clusters, output_file_name_inv)
 
 hour_factor = 8760/(hour_end_idx - hour_start_idx + 1)
 print("Total cost = ", result_con["total_cost"] / 1e6 * hour_factor, " MEuro", "\n")
 print("Total cost with investment = ", result_con_inv["total_cost"] / 1e6 * hour_factor, " MEuro","\n")
 
+result_con["total_cost"] / 1e6 * hour_factor - result_con_inv["total_cost"] / 1e6 * hour_factor
+
+folder_results = "/Users/giacomobastianel/Desktop/YRS_paper/Results"
+file_no_ei = "$(folder_results)/results_no.json"
+
+
+# RES integration
+hourly_RES_no_ei = []
+compute_RES_generation(zone_grid,720,results_no_ei,hourly_RES_no_ei)
+
+hourly_RES_ei = []
+compute_RES_generation(zone_grid_ei,720,results_ei,hourly_RES_ei)
+
+
+sum(hourly_RES_no_ei)*hour_factor/10^6 #TWh
+sum(hourly_RES_ei)*hour_factor/10^6 #TWh
+
+# CO2 emissions
+CO2_no_ei = []
+compute_CO2_emissions(zone_grid,720,results_no_ei,CO2_no_ei)
+
+CO2_ei = []
+compute_CO2_emissions(zone_grid_ei,720,results_ei,CO2_ei)
+
+sum(CO2_no_ei)*hour_factor/10^6 #Mton
+sum(CO2_ei)*hour_factor/10^6 #Mton
+
+
+# NOx emissions
+NOx_no_ei = []
+compute_NOx_emissions(zone_grid,720,results_no_ei,NOx_no_ei)
+
+NOx_ei = []
+compute_NOx_emissions(zone_grid_ei,720,results_ei,NOx_ei)
+
+sum(NOx_no_ei)*hour_factor/10^6 #ton
+sum(NOx_ei)*hour_factor/10^6 #ton
+
+
+# SOx emissions
+SOx_no_ei = []
+compute_SOx_emissions(zone_grid,720,results_no_ei,SOx_no_ei)
+
+SOx_ei = []
+compute_SOx_emissions(zone_grid_ei,720,results_ei,SOx_ei)
+
+sum(SOx_no_ei)*hour_factor/10^6 #ton
+sum(SOx_ei)*hour_factor/10^6 #ton
+
+
+VOLL_no_ei = []
+VOLL_ei = []
+compute_VOLL(zone_grid,720,results_no_ei,VOLL_no_ei)
+compute_VOLL(zone_grid,720,results_no_ei,VOLL_ei)
+
+#=
+maximum([branch["index"] for (br, branch) in zone_grid_ei["gen"]])
+
+BE_dc = []
+for i in hour_start_idx:hour_end_idx
+    push!(BE_dc,results_ei["Iteration_1"]["$i"]["solution"]["branchdc"]["105"])
+end
+
+BE_conv_dc = []
+for i in hour_start_idx:hour_end_idx
+    push!(BE_conv_dc,results_ei["Iteration_1"]["$i"]["solution"]["convdc"]["210"])
+end
+
+gen_ei = []
+for i in hour_start_idx:hour_end_idx
+    push!(gen_ei,results_ei["Iteration_1"]["$i"]["solution"]["gen"]["7450"])
+    #push!(gen_ei,results_ei["Iteration_1"]["$i"]["solution"]["gen"]["3922"])
+    #push!(gen_ei,results_ei["Iteration_1"]["$i"]["solution"]["gen"]["3923"])
+    #push!(gen_ei,results_ei["Iteration_1"]["$i"]["solution"]["gen"]["3924"])
+    #push!(gen_ei,results_ei["Iteration_1"]["$i"]["solution"]["gen"]["3925"])
+    #push!(gen_ei,results_ei["Iteration_1"]["$i"]["solution"]["gen"]["3926"])
+end
+
+
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["8803"]
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["8804"]
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["8805"]
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["8806"]
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["8807"]
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["8808"]
+
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["215"]
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["216"]
+results_ei["Iteration_1"]["1"]["solution"]["branch"]["217"]
+
+
+timeseries_data["wind_offshore"]["BE"]
+
+
+for (g_id,g) in zone_grid_ei["gen"]
+    print([g_id,g["type"],g["type_tyndp"]],"\n")
+end
+
+
+for (g_id,g) in zone_grid_ei["branch"]
+    if g["f_bus"] == 10210 || g["t_bus"] == 10210
+        print(g_id,"\n")
+    end
+end
+=#

@@ -14,13 +14,15 @@ end
 function batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, solver, setting, batch_size, file_name::String)
     number_of_hours = hour_end_idx - hour_start_idx + 1
     iterations = Int(number_of_hours/ batch_size)
-
+    results_dict = Dict{String,Any}()
     for idx in 1 : iterations
         hs_idx = Int((hour_start_idx - 1) + (idx - 1) * batch_size + 1) 
         he_idx = Int((hour_start_idx - 1) + idx * batch_size)
 
-        run_batch_opf(hs_idx, he_idx, zone_grid, timeseries_data, solver, setting, file_name)
+        result = run_batch_opf(hs_idx, he_idx, zone_grid, timeseries_data, solver, setting, file_name)
+        results_dict["Iteration_$(idx)"] = deepcopy(result)
     end
+    return results_dict
 end
 
 function run_batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, solver, setting, file_name)
@@ -37,5 +39,6 @@ function run_batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data,
     open(opf_file_name,"w") do f
     write(f, json_string)
     end
+    return result
 end
 

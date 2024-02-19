@@ -82,7 +82,7 @@ function add_dc_bus!(grid_data, dc_voltage; dc_bus_id = nothing, lat = 0, lon = 
     grid_data["busdc"]["$dc_bus_idx"]["Cdc"] = 0 # not used
     grid_data["busdc"]["$dc_bus_idx"]["index"] = dc_bus_idx # not used
     grid_data["busdc"]["$dc_bus_idx"]["lat"] = lat
-    grid_data["busdc"]["$dc_bus_idx"]["lat"] = lon
+    grid_data["busdc"]["$dc_bus_idx"]["lon"] = lon
 
     return grid_data, dc_bus_idx
 end
@@ -192,14 +192,14 @@ function add_generator!(grid_data, ac_bus_idx, gen_bus, power_rating; gen_id = n
     grid_data["gen"]["$gen_idx"]["qmax"] = 6.0 
     grid_data["gen"]["$gen_idx"]["gen_status"] = 1
     grid_data["gen"]["$gen_idx"]["qmin"] = - 6.0 
-    grid_data["gen"]["$gen_idx"]["type"] = "Offshore Wind"  
+    grid_data["gen"]["$gen_idx"]["type"] = "Offshore"  
     grid_data["gen"]["$gen_idx"]["pmin"] = 0.0 
     grid_data["gen"]["$gen_idx"]["ncost"] = 2 
     
     return grid_data
 end
 
-function add_dc_branch!(grid_data, fbus_dc, tbus_dc, power_rating; status = 1, r = 0.06, branch_id = nothing)
+function add_dc_branch!(grid_data, fbus_dc, tbus_dc, power_rating; status = 1, r = 0.006, branch_id = nothing)
     if isnothing(branch_id)
         dc_br_idx = maximum([branch["index"] for (br, branch) in grid_data["branchdc"]]) + 1
     else
@@ -216,6 +216,9 @@ function add_dc_branch!(grid_data, fbus_dc, tbus_dc, power_rating; status = 1, r
     grid_data["branchdc"]["$dc_br_idx"]["rateC"] = power_rating
     grid_data["branchdc"]["$dc_br_idx"]["status"] = status
     grid_data["branchdc"]["$dc_br_idx"]["index"] = dc_br_idx
+    grid_data["branchdc"]["$dc_br_idx"]["source_id"] = []
+    push!(grid_data["branchdc"]["$dc_br_idx"]["source_id"],"branchdc")
+    push!(grid_data["branchdc"]["$dc_br_idx"]["source_id"],dc_br_idx)
 
     return grid_data
 end
@@ -289,34 +292,49 @@ function add_Belgian_energy_island(grid_data,links)
             add_ac_branch!(grid_data_inv, ac_bus_idx_ei, 131, 4.0)
             add_ac_branch!(grid_data_inv, ac_bus_idx_ei, 131, 4.0)
 
+            grid_data_inv["branch"]["213"]["rate_a"] = grid_data["branch"]["213"]["rate_a"]*2 
+            grid_data_inv["branch"]["214"]["rate_a"] = grid_data["branch"]["214"]["rate_a"]*2 
+            grid_data_inv["branch"]["215"]["rate_a"] = grid_data["branch"]["215"]["rate_a"]*2 
+            grid_data_inv["branch"]["216"]["rate_a"] = grid_data["branch"]["216"]["rate_a"]*2 
+            grid_data_inv["branch"]["217"]["rate_a"] = grid_data["branch"]["217"]["rate_a"]*2
+            grid_data_inv["branch"]["213"]["br_r"] = grid_data["branch"]["213"]["br_r"]/2 
+            grid_data_inv["branch"]["214"]["br_r"] = grid_data["branch"]["214"]["br_r"]/2 
+            grid_data_inv["branch"]["215"]["br_r"] = grid_data["branch"]["215"]["br_r"]/2 
+            grid_data_inv["branch"]["216"]["br_r"] = grid_data["branch"]["216"]["br_r"]/2 
+            grid_data_inv["branch"]["217"]["br_r"] = grid_data["branch"]["217"]["br_r"]/2 
+            grid_data_inv["branch"]["213"]["br_x"] = grid_data["branch"]["213"]["br_x"]/2 
+            grid_data_inv["branch"]["214"]["br_x"] = grid_data["branch"]["214"]["br_x"]/2 
+            grid_data_inv["branch"]["215"]["br_x"] = grid_data["branch"]["215"]["br_x"]/2 
+            grid_data_inv["branch"]["216"]["br_x"] = grid_data["branch"]["216"]["br_x"]/2 
+            grid_data_inv["branch"]["217"]["br_x"] = grid_data["branch"]["217"]["br_x"]/2 
+
             # Second Step: Building the DC part of the energy island with three DC buses
             # DC bus energy island
             grid_data_inv, dc_bus_idx_ei = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.6468 , lon = 2.778687)
-            add_converter!(grid_data_inv, ac_bus_idx_ei, dc_bus_idx_ei, 20.0) # Converter between AC and DC parts of the energy island
+            add_converter!(grid_data_inv, ac_bus_idx_ei, dc_bus_idx_ei, 99.0) # Converter between AC and DC parts of the energy island
 
             # DC switchyard bus energy island
             grid_data_inv, dc_bus_idx_switchyard = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.7806 , lon = 3.006469)
-            add_dc_branch!(grid_data_inv, dc_bus_idx_ei, dc_bus_idx_switchyard, 20.0)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_ei, dc_bus_idx_switchyard, 99.0)
 
             # DC UK bus energy island
-            grid_data_inv, dc_bus_idx_uk = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.8883 , lon = 1.209372)
+            grid_data_inv, dc_bus_idx_uk = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.8883 , lon = 2.609372)
             add_dc_branch!(grid_data_inv, dc_bus_idx_uk, dc_bus_idx_switchyard, 14.0)
 
             # DC onshore UK bus energy island
             grid_data_inv, dc_bus_idx_uk_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.880090 , lon = 1.192580) # onshore
             ac_bus_idx_uk = find_closest_bus(grid_data_inv,51.880090 ,1.192580)
             grid_data_inv["bus"]["5779"]["base_kV"] = 400
-            print("PRINTING BUS", ac_bus_idx_uk, "\n")
             add_converter!(grid_data_inv, ac_bus_idx_uk, dc_bus_idx_uk_onshore, 14.0)
-            add_dc_branch!(grid_data_inv, dc_bus_idx_switchyard, dc_bus_idx_uk_onshore, 14.0)
+            add_dc_branch!(grid_data_inv, dc_bus_idx_uk_onshore, dc_bus_idx_uk, 14.0)
 
             # DC onshore BE bus energy island (next to Gezelle)
             grid_data_inv, dc_bus_idx_be_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.269453 , lon = 3.211539) # onshore
-            add_converter!(grid_data_inv, 131, dc_bus_idx_be_onshore, 14.0)
+            add_converter!(grid_data_inv, 131, dc_bus_idx_be_onshore, 20.0)
             add_dc_branch!(grid_data_inv, dc_bus_idx_switchyard, dc_bus_idx_be_onshore, 20.0)
 
             # Adding generators for the energy island
-            add_generator!(grid_data, ac_bus_idx_ei, ac_bus_idx_ei, 35.0; status = 1)
+            #add_generator!(grid_data_inv, ac_bus_idx_ei, ac_bus_idx_ei, 35.0; status = 1)
         end
     end
     return grid_data_inv
@@ -341,3 +359,4 @@ EU_grid["branch"]["217"]
 
 EU_grid["bus"]["131"]
 =#
+
