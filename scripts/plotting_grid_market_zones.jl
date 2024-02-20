@@ -4,7 +4,7 @@ using DataFrames
 
 # INSERT HERE THE LINK TO THE GRID MODEL
 ##############################################
-EU_grid = deepcopy(zone_grid_ei)
+EU_grid = deepcopy(zone_grid_EI)
 ##############################################
 
 nodes = [] # vector for the buses
@@ -170,8 +170,8 @@ showlegend = false,
 margin=PlotlyJS.attr(l=0, r=0, t=0, b=0))
 #display plot
 #PlotlyJS.plot(trace, layout)
-PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(dirname(@__DIR__),"results/Figures/CWE_grid_AC_DC.pdf"))
-PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(dirname(@__DIR__),"results/Figures/CWE_grid_AC_DC.svg"))
+PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(dirname(@__DIR__),"results/Figures/Try_EI.pdf"))
+PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(dirname(@__DIR__),"results/Figures/Try_EI.svg"))
 
 #PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(folder_results,folder,"Figures_"*"$case","$hour"*".png"))
 
