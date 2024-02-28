@@ -65,7 +65,7 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 
 # Isolate zone: input is vector of strings, if you need to relax the fixing border flow assumptions use:
 # _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = x), this will leas to (1-slack)*xb_flow_ref < xb_flow < (1+slack)*xb_flow_ref
-zone_grid = _EUGO.isolate_zones(EU_grid, ["BE","UK","DK1","DK2"])
+zone_grid = _EUGO.isolate_zones(EU_grid, ["BE","UK","FR","NL"])
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
@@ -82,26 +82,24 @@ _EUGO.get_demand_reponse!(zone_grid, zonal_input, zone_mapping, timeseries_data)
 for (b, branch) in zone_grid["branch"]
     branch["angmin"] = -pi
     branch["angmax"] = pi
-    for (bo, border) in zone_grid["borders"]
-        if branch["rate_a"] >= 49.9 && !haskey(border["xb_lines"], b)
-            branch["rate_a"] = 15
-            branch["rate_b"] = 15
-            branch["rate_c"] = 15
-        end
-    end
+    #for (bo, border) in zone_grid["borders"]
+    #    if branch["rate_a"] >= 49.9 && !haskey(border["xb_lines"], b)
+    #        branch["rate_a"] = 15
+    #        branch["rate_b"] = 15
+    #        branch["rate_c"] = 15
+    #    end
+    #end
 end
 
 ###################
 #####  Adding HVDC links
 zone_grid_un = _EUGO.add_hvdc_links(zone_grid, links)
-zone_grid_EI = add_full_Belgian_energy_island(zone_grid,5900.0)
-zone_grid_EI_0 = add_full_Belgian_energy_island(zone_grid,0.0)
+zone_grid_EI = _EUGO.add_full_Belgian_energy_island(zone_grid,5900.0)
+zone_grid_EI_0 = _EUGO.add_full_Belgian_energy_island(zone_grid,0.0)
 
 json_string_data_un = JSON.json(zone_grid_un)
 json_string_data_EI = JSON.json(zone_grid_EI)
 json_string_data_EI_0 = JSON.json(zone_grid_EI_0)
-
-folder_results = "/Users/giacomobastianel/Library/CloudStorage/OneDrive-KULeuven/WP1_WP3_collaboration/OPF_power_directions"
 
 open(joinpath(folder_results,"Nodal_grid.json"),"w" ) do f
 write(f,json_string_data_un)
@@ -118,22 +116,44 @@ end
 # Start runnning hourly OPF calculations
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 
-number_of_hours = 8760
-results = hourly_opf(zone_grid,number_of_hours,timeseries_data)
-results_EI = hourly_opf(zone_grid_EI,number_of_hours,timeseries_data)
-results_EI_0 = hourly_opf(zone_grid_EI_0,number_of_hours,timeseries_data)
 
-results_opf = Dict{String,Any}()
-results_opf["no_investment"] = deepcopy(results)
-results_opf["EI_5900"] = deepcopy(results_EI)
-results_opf["EI_0"] = deepcopy(results_EI_0)
+for (g_id,g) in zone_grid["gen"]
+    if g["type_tyndp"] == "Onshore Wind" || g["type_tyndp"] == "Offshore Wind" || g["type_tyndp"] == "Solar PV" || g["type_tyndp"] == "Other RES" 
+        g["pmax"] = 99.99
+    end
+end
+for (g_id,g) in zone_grid["branch"]
+    g["rate_a"] = g["rate_a"]*2 
+end
+=#
+number_of_hours = 24
+results = hourly_opf(zone_grid,1,8760,timeseries_data,gurobi)
+results_EI = hourly_opf(zone_grid_EI,1,8760,timeseries_data,gurobi)
+results_EI_0 = hourly_opf(zone_grid_EI_0,1,8760,timeseries_data,gurobi)
+
+
+
+results_opf_1_8760 = Dict{String,Any}()
+results_opf_1_8760["no_investment"] = deepcopy(results)
+results_opf_1_8760["EI_5900"] = deepcopy(results_EI)
+results_opf_1_8760["EI_0"] = deepcopy(results_EI_0)
+
+json_string_data_un = JSON.json(results_opf_1_8760)
+
+open(joinpath(folder_results,"BE_energy_island_simulations.json"),"w" ) do f
+    write(f,json_string_data_un)
+end
+
+
+
+
 
 
 obj = []
 obj_EI = []
 obj_EI_0 = []
 
-for i in 1:number_of_hours
+for i in 1:720
     #if i != 57 && i != 58 && i != 59
         push!(obj,results["$i"]["objective"])
         push!(obj_EI,results_EI["$i"]["objective"])
@@ -142,12 +162,12 @@ for i in 1:number_of_hours
 end
 findall(@. any(isnan, obj))
 
-
+#=
 json_string_data_un = JSON.json(results_opf)
 
 open(joinpath(folder_results,"Nodal_grid.json"),"w" ) do f
     write(f,json_string_data_un)
     end
     
-
+=#
 

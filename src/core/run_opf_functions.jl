@@ -16,17 +16,17 @@ function fix_RES_time_series(grid,hour,hourly_timeseries)
     end
 end
 
-function hourly_opf(grid,number_of_hours,hourly_timeseries)
+function hourly_opf(grid,start_hour,end_hour,hourly_timeseries,optimizer)
     results = Dict{String,Any}()
-    grid_hour = Dict{String,Any}()
-    for hour in 1:number_of_hours
+    #grid_hour = Dict{String,Any}()
+    s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
+    for hour in start_hour:end_hour
         hourly_grid = deepcopy(grid)
         fix_hourly_loads(hourly_grid,hour,hourly_timeseries)
         fix_RES_time_series(hourly_grid,hour,hourly_timeseries)
-        s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
-        hourly_results = deepcopy(_PMACDC.run_acdcopf(hourly_grid, DCPPowerModel, Gurobi.Optimizer; setting = s))
+        hourly_results = deepcopy(_PMACDC.run_acdcopf(hourly_grid, DCPPowerModel, optimizer; setting = s))
         results["$hour"] = deepcopy(hourly_results)
-        grid_hour["$hour"] = deepcopy(hourly_grid)
+        #grid_hour["$hour"] = deepcopy(hourly_grid)
     end
     return results#, grid_hour
 end

@@ -39,5 +39,6 @@ include("core/latlon2distance.jl")
 include("io/process_results.jl")
 include("io/plotting.jl")
 include("core/batch_opf.jl")
+include("core/run_opf_functions.jl")
 
 end # module EU_grid_operations

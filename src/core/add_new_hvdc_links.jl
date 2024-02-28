@@ -437,22 +437,22 @@ function add_full_Belgian_energy_island(grid_data, gen_cost)
     
     ## United Kingdom
     # DC UK bus energy island
-    grid_data_inv, dc_bus_idx_uk_offshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.861320 , lon = 1.621487) # onshore
+    grid_data_inv, dc_bus_idx_uk_offshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.861320 , lon = 1.621487)
     grid_data_inv, ac_bus_idx_uk_offshore = add_ac_bus_offshore!(grid_data_inv, ac_voltage, 10003; lat = 51.861320 , lon = 1.621487)
     add_converter!(grid_data_inv, ac_bus_idx_uk_offshore, dc_bus_idx_uk_offshore, 14.0)
-
     add_dc_branch!(grid_data_inv, dc_bus_idx_switchyard, dc_bus_idx_uk_offshore, 14.0)
+
+    # Adding offshore UK generator
+    add_generator!(grid_data_inv, ac_bus_idx_uk_offshore, ac_bus_idx_uk_offshore, 14.0, gen_cost, "UK"; status = 1)
 
     # DC onshore UK bus energy island
     grid_data_inv, dc_bus_idx_uk_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.880090 , lon = 1.192580) # onshore
 
-    ac_bus_idx_uk = find_closest_bus(grid_data_inv,51.880090 ,1.192580)
+    ac_bus_idx_uk = find_closest_bus(grid_data_inv, 51.880090, 1.192580)
     grid_data_inv["bus"]["$ac_bus_idx_uk"]["base_kV"] = 400
     add_converter!(grid_data_inv, ac_bus_idx_uk, dc_bus_idx_uk_onshore, 14.0)
     add_dc_branch!(grid_data_inv, dc_bus_idx_uk_onshore, dc_bus_idx_uk_offshore, 14.0)
 
-    # Adding offshore UK generator
-    add_generator!(grid_data_inv, ac_bus_idx_uk_offshore, ac_bus_idx_uk_offshore, 14.0, gen_cost, "UK"; status = 1)
 
     ## Denmark
     grid_data_inv, ac_bus_idx_offshore_1 = add_ac_bus_offshore!(grid_data_inv, ac_voltage, 10004; lat = 55.525756, lon = 7.171284)
@@ -472,13 +472,19 @@ function add_full_Belgian_energy_island(grid_data, gen_cost)
     add_dc_branch!(grid_data_inv, dc_bus_idx_ei_dk_sw, dc_bus_idx_dk_1, 20.0) # -> Triton
     add_dc_branch!(grid_data_inv, dc_bus_idx_ei_dk_sw, dc_bus_idx_switchyard, 20.0) # Switchyeard EI -> 2nd EI
 
-
     # Onshore DK
     grid_data_inv, dc_bus_idx_dk_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 55.731232, lon = 8.422398)
     ac_bus_idx_dk = find_closest_bus(grid_data_inv,55.731232,8.422398)
     grid_data_inv["bus"]["$ac_bus_idx_dk"]["base_kV"] = 380
     add_converter!(grid_data_inv, ac_bus_idx_dk, dc_bus_idx_dk_onshore, 14.0)
     add_dc_branch!(grid_data_inv, dc_bus_idx_dk_onshore, dc_bus_idx_dk_2, 14.0)
+
+    ## Belgium -> add second connection to Belgium
+    grid_data_inv, dc_bus_idx_be_2 = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.382225, lon = 3.275118)
+    ac_bus_idx_be = find_closest_bus(grid_data_inv,51.382225,3.275118)
+    grid_data_inv["bus"]["$ac_bus_idx_be"]["base_kV"] = 380
+    add_converter!(grid_data_inv, ac_bus_idx_be, dc_bus_idx_be_2, 20.0)
+    add_dc_branch!(grid_data_inv, dc_bus_idx_ei_dk_sw, dc_bus_idx_be_2, 20.0)
 
     return grid_data_inv
 end
