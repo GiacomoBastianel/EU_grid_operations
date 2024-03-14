@@ -419,10 +419,12 @@ function add_full_Belgian_energy_island(grid_data, gen_cost)
     # Second Step: Building the DC part of the energy island with three DC buses
     # DC bus energy island
     grid_data_inv, dc_bus_idx_ei = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.6468 , lon = 2.778687)
+    grid_data_inv["busdc"]["$dc_bus_idx_ei"]["name"] = "EI_DC_BE"
     add_converter!(grid_data_inv, ac_bus_idx_ei_DC, dc_bus_idx_ei, 20.5) # Converter between AC and DC parts of the energy island
 
     # DC switchyard bus energy island
     grid_data_inv, dc_bus_idx_switchyard = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.7806 , lon = 3.006469)
+    grid_data_inv["busdc"]["$dc_bus_idx_switchyard"]["name"] = "EI_DC_SW"
     add_dc_branch!(grid_data_inv, dc_bus_idx_ei, dc_bus_idx_switchyard, 20.0)
 
     # Adding generators to the energy island
@@ -432,12 +434,15 @@ function add_full_Belgian_energy_island(grid_data, gen_cost)
     ## Belgium
     # DC onshore BE bus energy island (next to Gezelle)
     grid_data_inv, dc_bus_idx_be_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.269453 , lon = 3.211539) # onshore
+    grid_data_inv["busdc"]["$dc_bus_idx_be_onshore"]["name"] = "EI_DC_BE_ONSHORE"
     add_converter!(grid_data_inv, 131, dc_bus_idx_be_onshore, 20.0)
     add_dc_branch!(grid_data_inv, dc_bus_idx_switchyard, dc_bus_idx_be_onshore, 20.0)
     
     ## United Kingdom
     # DC UK bus energy island
     grid_data_inv, dc_bus_idx_uk_offshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.861320 , lon = 1.621487)
+    grid_data_inv["busdc"]["$dc_bus_idx_uk_offshore"]["name"] = "EI_DC_UK"
+
     grid_data_inv, ac_bus_idx_uk_offshore = add_ac_bus_offshore!(grid_data_inv, ac_voltage, 10003; lat = 51.861320 , lon = 1.621487)
     add_converter!(grid_data_inv, ac_bus_idx_uk_offshore, dc_bus_idx_uk_offshore, 14.0)
     add_dc_branch!(grid_data_inv, dc_bus_idx_switchyard, dc_bus_idx_uk_offshore, 14.0)
@@ -447,6 +452,7 @@ function add_full_Belgian_energy_island(grid_data, gen_cost)
 
     # DC onshore UK bus energy island
     grid_data_inv, dc_bus_idx_uk_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.880090 , lon = 1.192580) # onshore
+    grid_data_inv["busdc"]["$dc_bus_idx_uk_onshore"]["name"] = "EI_DC_UK_ONSHORE"
 
     ac_bus_idx_uk = find_closest_bus(grid_data_inv, 51.880090, 1.192580)
     grid_data_inv["bus"]["$ac_bus_idx_uk"]["base_kV"] = 400
@@ -462,6 +468,11 @@ function add_full_Belgian_energy_island(grid_data, gen_cost)
 
     grid_data_inv, dc_bus_idx_dk_1 = add_dc_bus!(grid_data_inv, dc_voltage; lat = 55.525756, lon = 7.171284)
     grid_data_inv, dc_bus_idx_dk_2 = add_dc_bus!(grid_data_inv, dc_voltage; lat = 55.525756, lon = 7.071284)
+
+    grid_data_inv["busdc"]["$dc_bus_idx_dk_1"]["name"] = "EI_DC_DK_1"
+    grid_data_inv["busdc"]["$dc_bus_idx_dk_2"]["name"] = "EI_DC_DK_2"
+
+
     add_converter!(grid_data_inv, ac_bus_idx_offshore_1, dc_bus_idx_dk_1, 20.0)
     add_converter!(grid_data_inv, ac_bus_idx_offshore_2, dc_bus_idx_dk_2, 14.0)
     add_dc_branch!(grid_data_inv, dc_bus_idx_dk_1, dc_bus_idx_dk_2, 20.0)
@@ -469,11 +480,13 @@ function add_full_Belgian_energy_island(grid_data, gen_cost)
     # Add triton and AC connection DK
     #grid_data_inv, dc_bus_idx_dk_sw = add_dc_bus!(grid_data_inv, dc_voltage; lat = 55.225756, lon = 7.121284)
     grid_data_inv, dc_bus_idx_ei_dk_sw = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.865323, lon = 2.781013)
+    grid_data_inv["busdc"]["$dc_bus_idx_ei_dk_sw"]["name"] = "EI_DC_DK_SW"
     add_dc_branch!(grid_data_inv, dc_bus_idx_ei_dk_sw, dc_bus_idx_dk_1, 20.0) # -> Triton
     add_dc_branch!(grid_data_inv, dc_bus_idx_ei_dk_sw, dc_bus_idx_switchyard, 20.0) # Switchyeard EI -> 2nd EI
 
     # Onshore DK
     grid_data_inv, dc_bus_idx_dk_onshore = add_dc_bus!(grid_data_inv, dc_voltage; lat = 55.731232, lon = 8.422398)
+    grid_data_inv["busdc"]["$dc_bus_idx_dk_onshore"]["name"] = "EI_DC_DK_ONSHORE"
     ac_bus_idx_dk = find_closest_bus(grid_data_inv,55.731232,8.422398)
     grid_data_inv["bus"]["$ac_bus_idx_dk"]["base_kV"] = 380
     add_converter!(grid_data_inv, ac_bus_idx_dk, dc_bus_idx_dk_onshore, 14.0)
@@ -481,6 +494,7 @@ function add_full_Belgian_energy_island(grid_data, gen_cost)
 
     ## Belgium -> add second connection to Belgium
     grid_data_inv, dc_bus_idx_be_2 = add_dc_bus!(grid_data_inv, dc_voltage; lat = 51.382225, lon = 3.275118)
+    grid_data_inv["busdc"]["$dc_bus_idx_be_2"]["name"] = "EI_DC_BE_ONSHORE_II"
     ac_bus_idx_be = find_closest_bus(grid_data_inv,51.382225,3.275118)
     grid_data_inv["bus"]["$ac_bus_idx_be"]["base_kV"] = 380
     add_converter!(grid_data_inv, ac_bus_idx_be, dc_bus_idx_be_2, 20.0)

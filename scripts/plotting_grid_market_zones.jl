@@ -6,6 +6,7 @@ using DataFrames
 ##############################################
 EU_grid = deepcopy(zone_grid_EI)
 ##############################################
+folder = "/Users/giacomobastianel/Desktop/Results_Merijn/Figures"
 
 nodes = [] # vector for the buses
 lat = [] # vector for the latitude of the buses
@@ -170,8 +171,8 @@ showlegend = false,
 margin=PlotlyJS.attr(l=0, r=0, t=0, b=0))
 #display plot
 #PlotlyJS.plot(trace, layout)
-PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(dirname(@__DIR__),"results/Figures/Try_EI.pdf"))
-PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(dirname(@__DIR__),"results/Figures/Try_EI.svg"))
+PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(folder,"map.pdf"))
+PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(folder,"map.svg"))
 
 #PlotlyJS.savefig(PlotlyJS.plot(trace, layout), joinpath(folder_results,folder,"Figures_"*"$case","$hour"*".png"))
 

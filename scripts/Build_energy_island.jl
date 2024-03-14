@@ -65,7 +65,7 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 
 # Isolate zone: input is vector of strings, if you need to relax the fixing border flow assumptions use:
 # _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = x), this will leas to (1-slack)*xb_flow_ref < xb_flow < (1+slack)*xb_flow_ref
-zone_grid = _EUGO.isolate_zones(EU_grid, ["BE","UK","FR","NL"])
+zone_grid = _EUGO.isolate_zones(EU_grid, ["BE","UK","DK1","DK2","NL"])
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
@@ -101,6 +101,8 @@ json_string_data_un = JSON.json(zone_grid_un)
 json_string_data_EI = JSON.json(zone_grid_EI)
 json_string_data_EI_0 = JSON.json(zone_grid_EI_0)
 
+folder_results = "/Users/giacomobastianel/Desktop/Results_Merijn"
+
 open(joinpath(folder_results,"Nodal_grid.json"),"w" ) do f
 write(f,json_string_data_un)
 end
@@ -117,30 +119,72 @@ end
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 
 
+
 for (g_id,g) in zone_grid["gen"]
     if g["type_tyndp"] == "Onshore Wind" || g["type_tyndp"] == "Offshore Wind" || g["type_tyndp"] == "Solar PV" || g["type_tyndp"] == "Other RES" 
-        g["pmax"] = 99.99
+        g["pmax"] = 30.0
     end
 end
+#=
 for (g_id,g) in zone_grid["branch"]
     g["rate_a"] = g["rate_a"]*2 
 end
 =#
 number_of_hours = 24
-results = hourly_opf(zone_grid,1,8760,timeseries_data,gurobi)
-results_EI = hourly_opf(zone_grid_EI,1,8760,timeseries_data,gurobi)
-results_EI_0 = hourly_opf(zone_grid_EI_0,1,8760,timeseries_data,gurobi)
+results = hourly_opf(zone_grid,1,720,timeseries_data,gurobi)
+results_EI = hourly_opf(zone_grid_EI,1,720,timeseries_data,gurobi)
+results_EI_0 = hourly_opf(zone_grid_EI_0,1,720,timeseries_data,gurobi)
+
+obj = []
+obj_EI = []
+obj_EI_0 = []
+for i in 1:720
+    push!(obj,results["$i"]["objective"])
+    push!(obj_EI,results_EI["$i"]["objective"])
+    push!(obj_EI_0,results_EI_0["$i"]["objective"])
+end
+findall(@. isnan(obj))
 
 
+results_opf_1_720 = Dict{String,Any}()
+results_opf_1_720["no_investment"] = deepcopy(results)
+results_opf_1_720["EI_5900"] = deepcopy(results_EI)
+results_opf_1_720["EI_0"] = deepcopy(results_EI_0)
 
-results_opf_1_8760 = Dict{String,Any}()
-results_opf_1_8760["no_investment"] = deepcopy(results)
-results_opf_1_8760["EI_5900"] = deepcopy(results_EI)
-results_opf_1_8760["EI_0"] = deepcopy(results_EI_0)
+json_string_data_un = JSON.json(results_opf_1_720)
 
-json_string_data_un = JSON.json(results_opf_1_8760)
+open(joinpath(folder_results,"BE_energy_island_simulations_1_720.json"),"w" ) do f
+    write(f,json_string_data_un)
+end
 
-open(joinpath(folder_results,"BE_energy_island_simulations.json"),"w" ) do f
+results_4320_5040 = hourly_opf(zone_grid,4320,5040,timeseries_data,gurobi)
+results_EI_4320_5040 = hourly_opf(zone_grid_EI,4320,5040,timeseries_data,gurobi)
+results_EI_0_4320_5040 = hourly_opf(zone_grid_EI_0,4320,5040,timeseries_data,gurobi)
+
+results_opf_4320_5040 = Dict{String,Any}()
+results_opf_4320_5040["no_investment"] = deepcopy(results_4320_5040)
+results_opf_4320_5040["EI_5900"] = deepcopy(results_EI_4320_5040)
+results_opf_4320_5040["EI_0"] = deepcopy(results_EI_0_4320_5040)
+
+json_string_data_un = JSON.json(results_opf_4320_5040)
+
+open(joinpath(folder_results,"BE_energy_island_simulations_4320_5040.json"),"w" ) do f
+    write(f,json_string_data_un)
+end
+
+
+results_5760_6480 = hourly_opf(zone_grid,5760,6480,timeseries_data,gurobi)
+results_EI_5760_6480 = hourly_opf(zone_grid_EI,5760,6480,timeseries_data,gurobi)
+results_EI_0_5760_6480 = hourly_opf(zone_grid_EI_0,5760,6480,timeseries_data,gurobi)
+
+results_opf_5760_6480 = Dict{String,Any}()
+results_opf_5760_6480["no_investment"] = deepcopy(results_5760_6480)
+results_opf_5760_6480["EI_5900"] = deepcopy(results_EI_5760_6480)
+results_opf_5760_6480["EI_0"] = deepcopy(results_EI_0_5760_6480)
+
+json_string_data_un = JSON.json(results_opf_5760_6480)
+
+open(joinpath(folder_results,"BE_energy_island_simulations_5760_6480.json"),"w" ) do f
     write(f,json_string_data_un)
 end
 
@@ -149,18 +193,8 @@ end
 
 
 
-obj = []
-obj_EI = []
-obj_EI_0 = []
 
-for i in 1:720
-    #if i != 57 && i != 58 && i != 59
-        push!(obj,results["$i"]["objective"])
-        push!(obj_EI,results_EI["$i"]["objective"])
-        push!(obj_EI_0,results_EI_0["$i"]["objective"])
-    #end
-end
-findall(@. any(isnan, obj))
+
 
 #=
 json_string_data_un = JSON.json(results_opf)
