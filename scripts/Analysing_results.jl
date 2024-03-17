@@ -6,8 +6,10 @@ using Gurobi
 using JSON
 using Plots
 
+# Insert your results folder
 results_folder = "/Users/giacomobastianel/Desktop/Results_Merijn"
 
+# Calling results dictionaries
 results_1_720 = JSON.parsefile(joinpath(results_folder,"BE_energy_island_simulations_1_720.json"))
 results_4320_5040 = JSON.parsefile(joinpath(results_folder,"BE_energy_island_simulations_4320_5040.json"))
 results_5760_6480 = JSON.parsefile(joinpath(results_folder,"BE_energy_island_simulations_5760_6480.json"))
@@ -29,7 +31,7 @@ hour_start = 1
 hour_end = 8760
 ############ LOAD EU grid data
 file = "./data_sources/European_grid.json"
-output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
+#output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
 gurobi = Gurobi.Optimizer
 EU_grid = _PM.parse_file(file)
 _PMACDC.process_additional_data!(EU_grid)
@@ -68,12 +70,6 @@ zone_grid_un = _EUGO.add_hvdc_links(zone_grid, links)
 zone_grid_EI = _EUGO.add_full_Belgian_energy_island(zone_grid,5900.0)
 zone_grid_EI_0 = _EUGO.add_full_Belgian_energy_island(zone_grid,0.0)
 
-buses = []
-for i in eachindex(zone_grid_EI["gen"])
-    push!(buses,parse(Int64,i))
-end
-maximum(buses)
-
 
 ################## New grid elements with the energy island ###########################
 zone_grid_EI["busdc"]["10210"] # BE EI
@@ -101,7 +97,6 @@ zone_grid_EI["branch"]["8807"] # AC Line BE EI 5 -> Gezelle
 zone_grid_EI["branch"]["8808"] # AC Line BE EI 6 -> Gezelle
 zone_grid_EI["branch"]["8809"] # Switch BE EI AC -> BE EI DC
 
-
 zone_grid_EI["branchdc"]["110"] # EI SW (DK) -> BE ONSHORE II
 zone_grid_EI["branchdc"]["109"] # DK ONSHORE
 zone_grid_EI["branchdc"]["108"] # EI SW (DK) -> EI SW
@@ -118,14 +113,19 @@ zone_grid_EI["gen"]["7335"] # UK 1.4 GW, AC BUS 10003
 zone_grid_EI["gen"]["7334"] # BE 1.4 GW, AC BUS 10002
 zone_grid_EI["gen"]["7333"] # BE 2.1 GW, AC BUS 10001
 
+# Example of how to create a vector of values
+obj_no_inv = []
+obj_ei_0 = []
 
-for (br_id,br) in zone_grid_EI["branch"]
-    if br["f_bus"] == 131 || br["t_bus"] == 131
-        print(br_id,"\n")
+for i in 1:720
+    if results_1_720["EI_0"]["$i"]["termination_status"] != "INFEASIBLE"
+        push!(obj_no_inv,results_1_720["no_investment"]["$i"]["objective"])
+        push!(obj_ei_0,results_1_720["EI_0"]["$i"]["objective"])
+    else
     end
 end
 
-
+# Vectors to be created
 br_dc_110 = []
 br_dc_109 = []
 br_dc_108 = []
@@ -151,34 +151,7 @@ br_8808 = []
 br_8809 = []
 
 
-for i in 1:720
-    print(i,"\n")
-    if results_1_720["EI_0"]["$i"]["termination_status"] != "INFEASIBLE"
-        push!(br_dc_102,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["102"]["pt"])
-        push!(br_dc_103,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["103"]["pt"])
-        push!(br_dc_104,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["104"]["pt"])
-        push!(br_dc_105,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["105"]["pt"])
-        push!(br_dc_106,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["106"]["pt"])
-        push!(br_dc_107,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["107"]["pt"])
-        push!(br_dc_108,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["108"]["pt"])
-        push!(br_dc_109,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["109"]["pt"])
-        push!(br_dc_110,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["110"]["pt"])
-        push!(gen_7337,results_1_720["EI_0"]["$i"]["solution"]["gen"]["7337"]["pg"])
-        push!(gen_7336,results_1_720["EI_0"]["$i"]["solution"]["gen"]["7336"]["pg"])
-        push!(gen_7335,results_1_720["EI_0"]["$i"]["solution"]["gen"]["7335"]["pg"])
-        push!(gen_7334,results_1_720["EI_0"]["$i"]["solution"]["gen"]["7334"]["pg"])
-        push!(gen_7333,results_1_720["EI_0"]["$i"]["solution"]["gen"]["7333"]["pg"])
-        push!(br_8803,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8803"]["pt"])
-        push!(br_8804,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8804"]["pt"])
-        push!(br_8805,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8805"]["pt"])
-        push!(br_8806,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8806"]["pt"])
-        push!(br_8807,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8807"]["pt"])
-        push!(br_8808,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8808"]["pt"])
-        push!(br_8809,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8809"]["pt"])
-    end
-end
-
-
+# Plotting stuff
 plot(gen_7333*100/10^3)
 plot!(gen_7334*100/10^3)
 plot!(gen_7335*100/10^3)
@@ -190,29 +163,7 @@ plot(br_dc_102)
 plot(br_dc_103)
 plot!(br_dc_104)
 
+# Create scatter plots
 scatter(br_dc_102)
 scatter!(br_dc_103)
 scatter(br_dc_108)
-
-
-scatter(br_8809)
-
-
-count(>(0),br_8804)
-
-
-obj_no_inv = []
-obj_ei_0 = []
-
-for i in 1:720
-    if results_1_720["EI_0"]["$i"]["termination_status"] != "INFEASIBLE"
-        push!(obj_no_inv,results_1_720["no_investment"]["$i"]["objective"])
-        push!(obj_ei_0,results_1_720["EI_0"]["$i"]["objective"])
-    else
-    end
-end
-
-scatter(obj_no_inv)
-scatter!(obj_ei_0)
-
-diff = obj_no_inv .- obj_ei_0

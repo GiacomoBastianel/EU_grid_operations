@@ -118,27 +118,26 @@ end
 # Start runnning hourly OPF calculations
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 
-
-
+#=
 for (g_id,g) in zone_grid["gen"]
     if g["type_tyndp"] == "Onshore Wind" || g["type_tyndp"] == "Offshore Wind" || g["type_tyndp"] == "Solar PV" || g["type_tyndp"] == "Other RES" 
         g["pmax"] = 30.0
     end
 end
-#=
+
 for (g_id,g) in zone_grid["branch"]
     g["rate_a"] = g["rate_a"]*2 
 end
 =#
 number_of_hours = 24
-results = hourly_opf(zone_grid,1,720,timeseries_data,gurobi)
-results_EI = hourly_opf(zone_grid_EI,1,720,timeseries_data,gurobi)
-results_EI_0 = hourly_opf(zone_grid_EI_0,1,720,timeseries_data,gurobi)
+results = hourly_opf(zone_grid,1,168,timeseries_data,gurobi)
+results_EI = hourly_opf(zone_grid_EI,1,168,timeseries_data,gurobi)
+results_EI_0 = hourly_opf(zone_grid_EI_0,1,168,timeseries_data,gurobi)
 
 obj = []
 obj_EI = []
 obj_EI_0 = []
-for i in 1:720
+for i in 1:168
     push!(obj,results["$i"]["objective"])
     push!(obj_EI,results_EI["$i"]["objective"])
     push!(obj_EI_0,results_EI_0["$i"]["objective"])
