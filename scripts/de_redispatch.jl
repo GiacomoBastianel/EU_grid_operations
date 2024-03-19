@@ -72,7 +72,7 @@ zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = 0.01)
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
 # (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
-timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zone = "DE")
+timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zones = ["DE"])
 
 # Determine hourly cross-border flows and add them to time series data
 push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)) 

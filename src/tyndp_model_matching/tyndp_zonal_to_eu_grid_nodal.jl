@@ -125,10 +125,8 @@ function map_zones()
 end
 
 
-function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zone = nothing)
-    if !isnothing(zone)
-        zones = [zone]
-    else
+function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zones = nothing)
+    if isnothing(zones)
         zones = [z for (z, zone) in zone_mapping]
     end
     timeseries_data = Dict{String, Any}(
@@ -176,20 +174,24 @@ end
 function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     for (l, load) in grid_data["load"]
         zone = load["zone"]
-        ratio = (timeseries_data["max_demand"][zone] / grid_data["baseMVA"]) / load["country_peak_load"]
-        load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
+        if haskey(timeseries_data, zone)
+            ratio = (timeseries_data["max_demand"][zone] / grid_data["baseMVA"]) / load["country_peak_load"]
+            load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
+        end
     end
     for (g, gen) in grid_data["gen"]
         zone = gen["zone"]
-        if gen["type_tyndp"] == "Onshore Wind"
-            gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
-            gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-        elseif gen["type_tyndp"] == "Offshore Wind"
-            gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-            gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-        elseif gen["type_tyndp"] == "Solar PV"
-            gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+        if haskey(timeseries_data, zone)
+            if gen["type_tyndp"] == "Onshore Wind"
+                gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
+                gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+            elseif gen["type_tyndp"] == "Offshore Wind"
+                gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+                gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            elseif gen["type_tyndp"] == "Solar PV"
+                gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+                gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            end
         end
     end
     for (b, border) in grid_data["borders"]
@@ -201,6 +203,25 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         end
     end
     return grid_data
+end
+
+function build_uc_data(data, hour_ids, timeseries_data)
+    number_of_hours = length(hour_ids)
+    zones = deepcopy(data["zones"])
+    data["zones"] = Dict{String, Any}()
+    for z in 1:length(zones)
+        data["zones"]["$z"] = zones[z]
+    end
+    data_copy = deepcopy(data)
+    uc_data = _IM.replicate(data_copy, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
+    uc_data["hour_ids"] = hour_ids
+    uc_data["number_of_hours"] = number_of_hours
+
+    for h in 1:number_of_hours
+        hourly_grid_data!(uc_data["nw"]["$h"], data, h, timeseries_data)
+    end
+
+    return uc_data
 end
 
 
