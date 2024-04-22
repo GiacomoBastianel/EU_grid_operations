@@ -121,9 +121,10 @@ for i in 1:720
     if results_1_720["EI_0"]["$i"]["termination_status"] != "INFEASIBLE"
         push!(obj_no_inv,results_1_720["no_investment"]["$i"]["objective"])
         push!(obj_ei_0,results_1_720["EI_0"]["$i"]["objective"])
-    else
     end
 end
+
+
 
 # Vectors to be created
 br_dc_110 = []
@@ -151,6 +152,29 @@ br_8808 = []
 br_8809 = []
 
 
+for i in 1:720
+    if results_1_720["EI_0"]["$i"]["termination_status"] != "INFEASIBLE"
+        push!(br_8803,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8803"]["pt"])
+        push!(br_8809,results_1_720["EI_0"]["$i"]["solution"]["branch"]["8809"]["pt"])
+        push!(br_dc_105,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["105"]["pt"])
+        push!(br_dc_104,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["104"]["pt"])
+        push!(br_dc_103,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["103"]["pt"])
+        push!(br_dc_102,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["102"]["pt"])
+        push!(br_dc_108,results_1_720["EI_0"]["$i"]["solution"]["branchdc"]["108"]["pt"])
+        push!(gen_7333,results_1_720["EI_0"]["$i"]["solution"]["gen"]["7333"]["pg"])
+        push!(gen_7334,results_1_720["EI_0"]["$i"]["solution"]["gen"]["7334"]["pg"])
+    end
+end
+
+gen_7334./gen_7333
+1.4/2.1
+
+
+scatter(br_8803)
+scatter(br_8809)
+
+
+
 # Plotting stuff
 plot(gen_7333*100/10^3)
 plot!(gen_7334*100/10^3)
@@ -161,9 +185,14 @@ plot!(gen_7337*100/10^3)
 
 plot(br_dc_102)
 plot(br_dc_103)
-plot!(br_dc_104)
+plot(br_dc_104)
+plot(br_dc_105)
+plot(br_dc_108)
 
 # Create scatter plots
 scatter(br_dc_102)
 scatter!(br_dc_103)
 scatter(br_dc_108)
+
+
+br_dc_102 .- br_dc_103 .- br_dc_104 .+ br_dc_108 
