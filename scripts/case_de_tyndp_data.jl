@@ -37,8 +37,8 @@ output_base = "DE"
 output_cba = "DE_HVDC"
 number_of_clusters = 200
 hour_start_idx = 1
-hour_end_idx = 8760
-batch_size = 365
+hour_end_idx = 24
+batch_size = 24
 ############ LOAD EU grid data
 file = "./data_sources/European_grid.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
@@ -104,9 +104,9 @@ zone_grid_un = _EUGO.add_hvdc_links(zone_grid, links)
  s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 
 # without investment 
-batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
+_EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 # with investment 
-batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_inv)
+_EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_inv)
 
 
 ## Load and process results
