@@ -544,3 +544,9 @@ function create_european_grid(;output_filename::String = "./data_sources/Europea
     end
 
 end
+
+function read_json(file)
+    open(file,"r") do f
+        return JSON.parse(f)
+    end
+end
