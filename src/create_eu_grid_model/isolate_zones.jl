@@ -22,6 +22,29 @@ function isolate_zones(grid_data, zones; border_slack = 0)
         for (b, bus) in grid_data["bus"]
             if haskey(bus, "zone") && bus["zone"] == zone
                 zone_data["bus"][b] = bus
+            elseif haskey(bus, "zone") && bus["zone"] == "XB_node"
+                bus_id = bus["index"]
+                for (br, branch) in grid_data["branch"]
+                    if branch["interconnector"] == true
+                        if branch["f_bus"] == bus_id 
+                            t_bus_id = branch["t_bus"]
+                            t_bus = grid_data["bus"]["$t_bus_id"]
+                            if haskey(t_bus, "zone") && t_bus["zone"] == zone
+                                println("XB_node ", t_bus_id, " assinged to zone ", zone)
+                                zone_data["bus"][b] = bus
+                                zone_data["bus"][b]["zone"] = zone
+                            end
+                        elseif branch["t_bus"] == bus_id
+                            f_bus_id = branch["f_bus"]
+                            f_bus = grid_data["bus"]["$f_bus_id"]
+                            if haskey(f_bus, "zone") && f_bus["zone"] == zone
+                                println("XB_node ", f_bus_id, " assinged to zone ", zone)
+                                zone_data["bus"][b] = bus
+                                zone_data["bus"][b]["zone"] = zone
+                            end
+                        end
+                    end
+                end
             end
         end
         for (g, gen) in grid_data["gen"]
@@ -64,7 +87,8 @@ function isolate_zones(grid_data, zones; border_slack = 0)
         end
     end
     add_borders!(zone_data, grid_data, zones; border_slack = border_slack)
-##### FIX BORDER ASSIGNMENT!!!!
+
+
     return zone_data
 end
 
@@ -79,11 +103,11 @@ function add_borders!(zone_data, grid_data, zones; border_slack = 0)
                 t_bus = branch["t_bus"]
                 border_buses = [grid_data["bus"]["$f_bus"]["zone"]  !== zone, grid_data["bus"]["$t_bus"]["zone"]  !== zone]
                 if findall(border_buses) == 1
-                border_bus = grid_data["bus"]["$f_bus"]
-                branch["direction"] = "to"   
+                    border_bus = grid_data["bus"]["$f_bus"]
+                    branch["direction"] = "to"   
                 else
-                border_bus = grid_data["bus"]["$t_bus"]
-                branch["direction"] = "from" 
+                    border_bus = grid_data["bus"]["$t_bus"]
+                    branch["direction"] = "from" 
                 end
                 xb_zone = find_xb_zone(grid_data, border_bus, zone)
                 if !isempty(xb_zone)

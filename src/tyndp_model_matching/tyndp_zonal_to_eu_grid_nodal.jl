@@ -174,24 +174,25 @@ end
 function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     for (l, load) in grid_data["load"]
         zone = load["zone"]
-        if haskey(timeseries_data, zone)
+        if haskey(timeseries_data["demand"], zone)
             ratio = (timeseries_data["max_demand"][zone] / grid_data["baseMVA"]) / load["country_peak_load"]
+            if zone == "NO1" || zone == "NO2" # comes from the weird tyndp data where the demand for the NO zones is somewhat aggregated!!!!!
+                ratio = ratio / 2
+            end
             load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
         end
     end
     for (g, gen) in grid_data["gen"]
         zone = gen["zone"]
-        if haskey(timeseries_data, zone)
-            if gen["type_tyndp"] == "Onshore Wind"
-                gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
-                gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-            elseif gen["type_tyndp"] == "Offshore Wind"
-                gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-                gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            elseif gen["type_tyndp"] == "Solar PV"
-                gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-                gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            end
+        if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
+            gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
+            gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+        elseif gen["type_tyndp"] == "Offshore Wind" && haskey(timeseries_data["wind_offshore"], zone)
+            gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+            gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+        elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
+            gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
         end
     end
     for (b, border) in grid_data["borders"]
@@ -205,21 +206,80 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     return grid_data
 end
 
-function build_uc_data(data, hour_ids, timeseries_data)
-    number_of_hours = length(hour_ids)
-    zones = deepcopy(data["zones"])
-    data["zones"] = Dict{String, Any}()
-    for z in 1:length(zones)
-        data["zones"]["$z"] = zones[z]
-    end
+function build_uc_data(data, hour_ids, timeseries_data; contingencies = false)
     data_copy = deepcopy(data)
-    uc_data = _IM.replicate(data_copy, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
-    uc_data["hour_ids"] = hour_ids
-    uc_data["number_of_hours"] = number_of_hours
-
-    for h in 1:number_of_hours
-        hourly_grid_data!(uc_data["nw"]["$h"], data, h, timeseries_data)
+    number_of_hours = length(hour_ids)
+    zones = deepcopy(data_copy["zones"])
+    data_copy["zones"] = Dict{String, Any}()
+    for z in 1:length(zones)
+        data_copy["zones"]["$z"] = Dict{String, Any}("zone" => z, "zone_name" => zones[z])
     end
+
+    data_copy["excluded_zones"] = []
+    for (g, gen) in data_copy["gen"]
+        core_zones = length(data_copy["zones"])
+        core_zone_names = [zone["zone_name"] for (z, zone) in data_copy["zones"]]
+        if !any(gen["zone"] .== core_zone_names)
+            new_zone = core_zones + 1
+            data_copy["zones"]["$new_zone"] =  Dict{String, Any}("zone" => new_zone, "zone_name" => gen["zone"])
+            push!(data_copy["excluded_zones"], new_zone)
+            gen["zone"] = new_zone
+        else
+            for (z, zone) in data_copy["zones"]
+                if zone["zone_name"] == gen["zone"]
+                    gen["country"] = deepcopy(gen["zone"])
+                    gen["zone"] = zone["zone"]
+                end
+            end
+        end
+    end
+
+    for (c, conv) in data_copy["convdc"]
+        for (z, zone) in data_copy["zones"]
+            if zone["zone_name"] == conv["zone"]
+                conv["country"] = deepcopy(conv["zone"])
+                conv["zone"] = zone["zone"]
+            end
+        end
+    end
+
+    if contingencies == false
+        uc_data = _IM.replicate(data_copy, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
+        uc_data["hour_ids"] = 1:number_of_hours # to be fixed later
+        uc_data["cont_ids"] = []
+        uc_data["number_of_hours"] = number_of_hours
+        uc_data["number_of_contingencies"] = 1 # to be fixed later
+        for h in 1:number_of_hours
+            hourly_grid_data!(uc_data["nw"]["$h"], data_copy, hour_ids[h], timeseries_data)
+        end
+    else
+        number_of_contingencies = 4
+        hour_idsx = [];
+        cont_idsx = [];
+        for i in 1:number_of_hours * number_of_contingencies
+            if mod(i, number_of_contingencies) == 1
+                push!(hour_idsx, i)
+            else
+                push!(cont_idsx, i)
+            end
+        end
+        uc_data = _IM.replicate(data_copy, number_of_hours * number_of_contingencies, Set{String}(["source_type", "name", "source_version", "per_unit"]))
+        uc_data["hour_ids"] = hour_idsx
+        uc_data["cont_ids"] = cont_idsx
+        uc_data["number_of_hours"] = number_of_hours
+        uc_data["number_of_contingencies"] = number_of_contingencies
+
+        for idx in 1:number_of_hours
+            hour = hour_ids[idx]
+            nw_start = 1 + (idx - 1) * (number_of_contingencies)
+            nw_ids = nw_start:(nw_start + number_of_contingencies-1)
+            for nw in nw_ids
+                hourly_grid_data!(uc_data["nw"]["$nw"], data_copy, hour, timeseries_data)
+            end
+        end
+    end
+
+
 
     return uc_data
 end
