@@ -15,7 +15,6 @@ import JSON
 import CbaOPF
 import DataFrames; const _DF = DataFrames
 import CSV
-import ExcelFiles; const _EF = ExcelFiles
 import Feather
 using XLSX
 using Statistics

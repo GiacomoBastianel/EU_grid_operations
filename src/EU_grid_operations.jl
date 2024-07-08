@@ -13,7 +13,6 @@ import CbaOPF
 import XLSX
 import JSON
 import Feather
-import ExcelFiles; const _EF = ExcelFiles
 import DataFrames; const _DF = DataFrames
 import CSV
 import Clustering

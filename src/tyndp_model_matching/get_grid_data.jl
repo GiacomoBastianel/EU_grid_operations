@@ -9,22 +9,28 @@
 # scenario{String}, e.g. "NT2025"
 function get_grid_data(scenario)    
 # data source: https://www.entsoe.eu/Documents/TYNDP%20documents/TYNDP2020/Reference%20Grid%202025%20-%20TYNDP%202020.xlsx    
-file_lines = "./data_sources/Reference Grid 2025 - TYNDP 2020.xls"
+file_lines = "./data_sources/Reference Grid 2025 - TYNDP 2020.xlsx"
 # data source: https://2020.entsos-tyndp-scenarios.eu/wp-content/uploads/2020/06/TYNDP-2020-Scenario-Datafile.xlsx.zip
-file_data = "./data_sources/TYNDP-2020-Scenario-Datafile.xls"
+file_data = "./data_sources/TYNDP-2020-Scenario-Datafile.xlsx"
 # data source for all demand time series: https://tyndp.entsoe.eu/maps-data 
 file_demand = "./data_sources/"*scenario*"_Demand_CY1984.csv"
 
 # Create dataframes from CSV/XLS files
-ntcs = _DF.DataFrame(_EF.load(file_lines, "2025"))
+lines = XLSX.readtable(file_lines, "2025")
+ntcs = _DF.DataFrame(Connection = lines[1][1], NTC = lines[1][2])
 
-nodes = _DF.DataFrame(_EF.load(file_data, "Nodes - Dict"))[1:64,:]
+nodes_ = XLSX.readtable(file_data, "Nodes - Dict")
+nodes = _DF.DataFrame(node_id = nodes_[1][1][1:64], country_text = nodes_[1][2][1:64], country = nodes_[1][3][1:64], previous_node = nodes_[1][4][1:64], latitude = nodes_[1][5][1:64], longitude = nodes_[1][6][1:64], region = nodes_[1][7][1:64], EU28 = nodes_[1][8][1:64])
 
-arcs = _DF.DataFrame(_EF.load(file_data, "Line - Dict"))
+arcs_ = XLSX.readtable(file_data,"Line - Dict")
+arcs = _DF.DataFrame(line_id = arcs_[1][1], node_a = arcs_[1][2], node_b = arcs_[1][3])
 
-capacity = _DF.DataFrame(_EF.load(file_data, "Capacity"))
+capacity_ = XLSX.readtable(file_data, "Capacity")
+capacity = _DF.DataFrame(Node_Line = capacity_[1][1], Generator_ID = capacity_[1][2], Parameter = capacity_[1][3], Case = capacity_[1][4], Scenario = capacity_[1][5], 
+Year = capacity_[1][6], ClimateYear = capacity_[1][7], Value = capacity_[1][7], Simulation_ID = capacity_[1][8], Node1 = capacity_[1][9], 
+Path = capacity_[1][10], Simulation_type = capacity_[1][11] , Sector = capacity_[1][12], Note = capacity_[1][13])
 
-node_positions = _DF.DataFrame(_EF.load(file_data, "Nodes - Dict"))
+node_positions = nodes[:, [:latitude, :longitude]]
 
 demand = _DF.DataFrame(CSV.File(file_demand))
 

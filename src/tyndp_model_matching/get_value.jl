@@ -27,10 +27,10 @@ function get_generation_capacity(capacity, scenario, type, climate_year, node)
     if scenario == "DE2040"
         scenario = "DE2040 Update"
     end
-    nodal_gen = capacity[capacity[!, "Node/Line"] .== node, :]
+    nodal_gen = capacity[capacity[!, "Node_Line"] .== node, :]
     nodal_gen_type = nodal_gen[nodal_gen[!, "Generator_ID"] .== type, :]
     values = nodal_gen_type[nodal_gen_type[!, "Simulation_ID"] .== scenario, :]
-    value = values[values[!, "Climate Year"] .== parse(Int, climate_year), "Value"]
+    value = values[values[!, "ClimateYear"] .== parse(Int, climate_year), "Value"]
     return value
 end
 

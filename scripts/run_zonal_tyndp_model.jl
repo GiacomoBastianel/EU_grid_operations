@@ -13,7 +13,6 @@
 # Import packages and create short names
 import DataFrames; const _DF = DataFrames
 import CSV
-import ExcelFiles; const _EF = ExcelFiles
 import JuMP
 import Gurobi
 import Feather

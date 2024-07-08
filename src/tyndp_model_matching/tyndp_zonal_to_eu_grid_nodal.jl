@@ -173,7 +173,11 @@ end
 
 function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     for (l, load) in grid_data["load"]
-        zone = load["zone"]
+        if haskey(load, "country_name")
+            zone = load["country_name"]
+        else
+            zone = load["zone"]
+        end
         if haskey(timeseries_data["demand"], zone)
             ratio = (timeseries_data["max_demand"][zone] / grid_data["baseMVA"]) / load["country_peak_load"]
             if zone == "NO1" || zone == "NO2" # comes from the weird tyndp data where the demand for the NO zones is somewhat aggregated!!!!!
@@ -183,7 +187,7 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         end
     end
     for (g, gen) in grid_data["gen"]
-        zone = gen["zone"]
+        zone = gen["country"]
         if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
             gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
             gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
@@ -206,7 +210,7 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     return grid_data
 end
 
-function build_uc_data(data, hour_ids, timeseries_data; contingencies = false)
+function build_uc_data(data, hour_ids, timeseries_data; contingencies = false, merge_zones = Dict{String, Any}())
     data_copy = deepcopy(data)
     number_of_hours = length(hour_ids)
     zones = deepcopy(data_copy["zones"])
@@ -243,6 +247,18 @@ function build_uc_data(data, hour_ids, timeseries_data; contingencies = false)
         end
     end
 
+    for (s, storage) in data_copy["storage"]
+        for (z, zone) in data_copy["zones"]
+            if zone["zone_name"] == storage["zone"]
+                storage["country"] = deepcopy(storage["zone"])
+                storage["zone"] = zone["zone"]
+            end
+        end
+    end
+
+    merge_zones!(data_copy; merge_zones = merge_zones)
+
+
     if contingencies == false
         uc_data = _IM.replicate(data_copy, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
         uc_data["hour_ids"] = 1:number_of_hours # to be fixed later
@@ -253,7 +269,8 @@ function build_uc_data(data, hour_ids, timeseries_data; contingencies = false)
             hourly_grid_data!(uc_data["nw"]["$h"], data_copy, hour_ids[h], timeseries_data)
         end
     else
-        number_of_contingencies = 4
+        # 1 N-0 contingency + (gen, storage, conv) contingency per zone......
+        number_of_contingencies = 1 + 3 * length(data_copy["zones"])
         hour_idsx = [];
         cont_idsx = [];
         for i in 1:number_of_hours * number_of_contingencies
@@ -282,6 +299,55 @@ function build_uc_data(data, hour_ids, timeseries_data; contingencies = false)
 
 
     return uc_data
+end
+
+function merge_zones!(data; merge_zones = Dict())
+    if !isempty(merge_zones)
+        max_zone_id = maximum(parse.(Int, keys(data["zones"])))
+        idx = max_zone_id + 1
+        for (target_zone, merged_zones) in merge_zones
+            push!(data["zones"], "$idx" => Dict("zone" => idx, "zone_name" => target_zone))
+            for (g, gen) in data["gen"]
+                if any(gen["country"] .== merged_zones["merged_zones"])
+                    gen["zone"] = idx
+                    gen["area"] = idx
+                end
+            end
+            for (c, conv) in data["convdc"]
+                if any(conv["country"] .== merged_zones["merged_zones"])
+                    conv["zone"] = idx
+                    conv["area"] = idx
+                end
+            end
+            for (l, load) in data["load"]
+                if any(load["zone"] .== merged_zones["merged_zones"])
+                    load["country_name"] = load["zone"]
+                    load["zone"] = target_zone
+                    load["area"] = idx
+                end
+            end
+            for (b, bus) in data["bus"]
+                if any(bus["zone"] .== merged_zones["merged_zones"])
+                    bus["zone"] = target_zone
+                    bus["area"] = idx
+                end
+            end
+            for (s, storage) in data["storage"]
+                if any(storage["country"] .== merged_zones["merged_zones"])
+                    storage["zone"] = idx
+                    storage["area"] = idx
+                end
+            end
+            for (z, zone) in data["zones"]
+                for merged_zone in merged_zones["merged_zones"]
+                    if zone["zone_name"] == merged_zone
+                        delete!(data["zones"], z)
+                    end
+                end
+            end
+            idx = idx + 1
+        end
+    end
 end
 
 
