@@ -300,7 +300,7 @@ end
 
     
 function add_branch!(data, ntcs, b, nodal_data)
-    branch_id = ntcs[b, "Border Names Based on PEMMDB 3.0 convention"]
+    branch_id = ntcs[b, "Connection"]
     f_bus_idx = nodal_data[branch_id[1:4]]["index"]
     t_bus_idx = nodal_data[branch_id[6:9]]["index"]
     reverse_name = join([branch_id[6:9],"-",branch_id[1:4]])
@@ -311,9 +311,9 @@ function add_branch!(data, ntcs, b, nodal_data)
             data["branch"]["$b"] = Dict{String, Any}()
             data["branch"]["$b"]["f_bus"] = data["bus"]["$f_bus_idx"]["bus_i"]
             data["branch"]["$b"]["t_bus"] = data["bus"]["$t_bus_idx"]["bus_i"]
-            data["branch"]["$b"]["rate_a"] =  ntcs[b, "Final Value for NTC (MW)"] / data["baseMVA"]
-            data["branch"]["$b"]["rate_i"]  = ntcs[b, "Final Value for NTC (MW)"] / data["baseMVA"]
-            data["branch"]["$b"]["rate_p"]  = ntcs[b, "Final Value for NTC (MW)"] / data["baseMVA"]
+            data["branch"]["$b"]["rate_a"] =  ntcs[b, "NTC"] / data["baseMVA"]
+            data["branch"]["$b"]["rate_i"]  = ntcs[b, "NTC"] / data["baseMVA"]
+            data["branch"]["$b"]["rate_p"]  = ntcs[b, "NTC"] / data["baseMVA"]
             data["branch"]["$b"]["name"] = branch_id
         
             data["branch"]["$b"]["transformer"] = false
@@ -336,9 +336,9 @@ function add_branch!(data, ntcs, b, nodal_data)
         data["branch"]["$b"] = Dict{String, Any}()
         data["branch"]["$b"]["f_bus"] = data["bus"]["$f_bus_idx"]["bus_i"]
         data["branch"]["$b"]["t_bus"] = data["bus"]["$t_bus_idx"]["bus_i"]
-        data["branch"]["$b"]["rate_a"] =  ntcs[b, "Final Value for NTC (MW)"] / data["baseMVA"]
-        data["branch"]["$b"]["rate_i"]  = ntcs[b, "Final Value for NTC (MW)"] / data["baseMVA"]
-        data["branch"]["$b"]["rate_p"]  = ntcs[b, "Final Value for NTC (MW)"] / data["baseMVA"]
+        data["branch"]["$b"]["rate_a"] =  ntcs[b, "NTC"] / data["baseMVA"]
+        data["branch"]["$b"]["rate_i"]  = ntcs[b, "NTC"] / data["baseMVA"]
+        data["branch"]["$b"]["rate_p"]  = ntcs[b, "NTC"] / data["baseMVA"]
         data["branch"]["$b"]["name"] = branch_id
     
         data["branch"]["$b"]["transformer"] = false
