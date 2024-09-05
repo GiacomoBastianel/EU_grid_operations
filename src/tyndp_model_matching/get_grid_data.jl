@@ -26,9 +26,9 @@ arcs_ = XLSX.readtable(file_data,"Line - Dict")
 arcs = _DF.DataFrame(line_id = arcs_[1][1], node_a = arcs_[1][2], node_b = arcs_[1][3])
 
 capacity_ = XLSX.readtable(file_data, "Capacity")
-capacity = _DF.DataFrame(Node_Line = capacity_[1][1], Generator_ID = capacity_[1][2], Parameter = capacity_[1][3], Case = capacity_[1][4], Scenario = capacity_[1][5], 
-Year = capacity_[1][6], ClimateYear = capacity_[1][7], Value = capacity_[1][7], Simulation_ID = capacity_[1][8], Node1 = capacity_[1][9], 
-Path = capacity_[1][10], Simulation_type = capacity_[1][11] , Sector = capacity_[1][12], Note = capacity_[1][13])
+capacity = _DF.DataFrame(Node_Line = capacity_[1][1], Generator_ID = capacity_[1][2], Parameter = capacity_[1][3], Category = capacity_[1][4], Case = capacity_[1][5], Scenario = capacity_[1][6], 
+Year = capacity_[1][7], ClimateYear = capacity_[1][8], Value = capacity_[1][9], Simulation_ID = capacity_[1][10], Node1 = capacity_[1][11], 
+Path = capacity_[1][12], Simulation_type = capacity_[1][13] , Sector = capacity_[1][14], Note = capacity_[1][15])
 
 node_positions = nodes[:, [:latitude, :longitude]]
 
