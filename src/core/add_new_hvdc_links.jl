@@ -87,9 +87,9 @@ function add_dc_bus!(grid_data, dc_voltage; dc_bus_id = nothing, lat = 0, lon = 
     return grid_data, dc_bus_idx
 end
 
-function add_ac_bus!(grid_data, ac_voltage; ac_bus_id = nothing, lat = 0, lon = 0)
+function add_ac_bus!(grid_data, ac_voltage, node; ac_bus_id = nothing, lat = 0, lon = 0)
     if isnothing(ac_bus_id)
-        ac_bus_idx = maximum([bus["index"] for (b, bus) in grid_data["busdc"]]) + 1
+        ac_bus_idx = maximum([bus["index"] for (b, bus) in grid_data["bus"]]) + 1
     else
         ac_bus_idx = ac_bus_id
     end
@@ -97,7 +97,7 @@ function add_ac_bus!(grid_data, ac_voltage; ac_bus_id = nothing, lat = 0, lon = 
     grid_data["bus"]["$ac_bus_idx"]["lat"] = lat
     grid_data["bus"]["$ac_bus_idx"]["lon"] = lon
     grid_data["bus"]["$ac_bus_idx"]["bus_i"] = ac_bus_idx # assign dc bus idx
-    grid_data["bus"]["$ac_bus_idx"]["name"] = "EI_BE"
+    grid_data["bus"]["$ac_bus_idx"]["string"] = "$(node)"
     grid_data["bus"]["$ac_bus_idx"]["bus_type"] = 2 # assign bus type
     grid_data["bus"]["$ac_bus_idx"]["vmax"] = 1.05 # maximum voltage 1.1 pu
     grid_data["bus"]["$ac_bus_idx"]["qd"] = 0 # demand at DC bus, normally 0
@@ -192,7 +192,7 @@ function add_converter!(grid_data, ac_bus_idx, dc_bus_idx, power_rating; zone = 
     return grid_data
 end
 
-function add_generator!(grid_data, ac_bus_idx, gen_bus, power_rating, gen_cost, gen_zone; gen_id = nothing, status = 1) # To be done later
+function add_generator!(grid_data, ac_bus_idx, gen_bus, power_rating, gen_cost, gen_zone, node; gen_id = nothing, status = 1) # To be done later
     if isnothing(gen_id)
         gen_idx = maximum([gen["index"] for (g, gen) in grid_data["gen"]]) + 1
     else
@@ -202,6 +202,7 @@ function add_generator!(grid_data, ac_bus_idx, gen_bus, power_rating, gen_cost, 
     grid_data["gen"]["$gen_idx"]["zone"] = gen_zone  
     grid_data["gen"]["$gen_idx"]["type_tyndp"] = "Offshore Wind"  
     grid_data["gen"]["$gen_idx"]["model"] = 2  
+    grid_data["gen"]["$gen_idx"]["node"] = node  
     grid_data["gen"]["$gen_idx"]["gen_bus"] = gen_bus
     grid_data["gen"]["$gen_idx"]["pmax"] = power_rating 
     grid_data["gen"]["$gen_idx"]["country"] = 4
@@ -216,7 +217,7 @@ function add_generator!(grid_data, ac_bus_idx, gen_bus, power_rating, gen_cost, 
     grid_data["gen"]["$gen_idx"]["qmax"] = 6.0 
     grid_data["gen"]["$gen_idx"]["gen_status"] = 1
     grid_data["gen"]["$gen_idx"]["qmin"] = - 6.0 
-    grid_data["gen"]["$gen_idx"]["type"] = "Offshore"  
+    grid_data["gen"]["$gen_idx"]["type"] = "Offshore Wind"  
     grid_data["gen"]["$gen_idx"]["pmin"] = 0.0 
     grid_data["gen"]["$gen_idx"]["ncost"] = 2 
     

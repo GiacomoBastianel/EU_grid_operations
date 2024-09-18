@@ -41,17 +41,17 @@ _PMACDC.process_additional_data!(EU_grid)
 _EUGO.add_load_and_pst_properties!(EU_grid)
 
 #### LOAD TYNDP SCENARIO DATA ##########
-#if load_data == true
-#    zonal_result, zonal_input, scenario_data = _EUGO.load_results(scenario, climate_year; file_name = "NSOW_zonal") # Import zonal results
-#    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(scenario) # import zonal input (mainly used for cost data)
-#    pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
-#end
+if load_data == true
+    zonal_result, zonal_input, scenario_data = _EUGO.load_results(scenario, climate_year; file_name = "NSOW_zonal") # Import zonal results
+    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(scenario) # import zonal input (mainly used for cost data)
+    pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
+end
 #print("ALL FILES LOADED", "\n")
 #print("----------------------","\n")
 
 
 #### CREATE THE GRID ##########
-
+#=
 input_folder = "/Users/giacomobastianel/Library/CloudStorage/OneDrive-KULeuven/STERNA 2050/Simulation_Results/Playground"
 grid_file = "STERNA_grid.json"
 timeseries_file = "STERNA_grid_time_series.json"
@@ -72,7 +72,7 @@ hour_end_idx = 24
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 # This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
 result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, grid, timeseries, gurobi, s)
-
+=#
 
 # map EU-Grid zones to TYNDP model zones
 zone_mapping = _EUGO.map_zones()

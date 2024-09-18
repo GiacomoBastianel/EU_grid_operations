@@ -84,98 +84,65 @@ for (b, branch) in zone_grid["branch"]
     #end
 end
 
+delete!(zone_grid["gen"],"1822")
+delete!(zone_grid["branch"],"219")
+delete!(zone_grid["branch"],"214")
+delete!(zone_grid["branch"],"234")
+delete!(zone_grid["branch"],"237")
+delete!(zone_grid["branch"],"7316")
+delete!(zone_grid["branch"],"7308")
+delete!(zone_grid["branch"],"7310")
+delete!(zone_grid["branch"],"7319")
+
 ###################
 #####  Adding offshore wind farms -> Develop code in src/core/add_STERNA_wind_farms.jl
-zone_grid_un = _EUGO.add_hvdc_links(zone_grid, links)
-zone_grid_EI = _EUGO.add_full_Belgian_energy_island(zone_grid,5900.0)
-zone_grid_EI_0 = _EUGO.add_full_Belgian_energy_island(zone_grid,0.0)
 
-json_string_data_un = JSON.json(zone_grid_un)
-json_string_data_EI = JSON.json(zone_grid_EI)
-json_string_data_EI_0 = JSON.json(zone_grid_EI_0)
+folder_results = "/Users/giacomobastianel/Library/CloudStorage/OneDrive-KULeuven/STERNA 2050/Simulation_Results/Playground"
 
-folder_results = "/Users/giacomobastianel/Desktop/Results_Merijn"
-
+json_string_data = JSON.json(zone_grid)
 open(joinpath(folder_results,"Nodal_grid.json"),"w" ) do f
-write(f,json_string_data_un)
+write(f,json_string_data)
 end
-open(joinpath(folder_results,"Nodal_grid_EI_5900.json"),"w" ) do f
-write(f,json_string_data_EI)
+
+json_string_timeseries = JSON.json(timeseries_data)
+open(joinpath(folder_results,"Timeseries.json"),"w" ) do f
+    write(f,json_string_timeseries)
 end
-open(joinpath(folder_results,"Nodal_grid_EI_0.json"),"w" ) do f
-write(f,json_string_data_EI_0)
-end
+
+
+
+STERNA_grid = "Nodal_grid.json"
+STERNA_time_series = "Timeseries.json"
+
+file_STERNA_grid = joinpath(folder_results,"$STERNA_grid")
+file_STERNA_time_series = joinpath(folder_results,"$STERNA_time_series")
+
+STERNA_grid = _PM.parse_file(file_STERNA_grid)
+STERNA_grid_time_series = read_json(file_STERNA_time_series)
 
 
 ### Carry out OPF
 # Start runnning hourly OPF calculations
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 
-#=
-for (g_id,g) in zone_grid["gen"]
-    if g["type_tyndp"] == "Onshore Wind" || g["type_tyndp"] == "Offshore Wind" || g["type_tyndp"] == "Solar PV" || g["type_tyndp"] == "Other RES" 
-        g["pmax"] = 30.0
-    end
-end
+hour_start_idx = 1 
+hour_end_idx =  24
 
-for (g_id,g) in zone_grid["branch"]
-    g["rate_a"] = g["rate_a"]*2 
-end
-=#
-number_of_hours = 24
-results = hourly_opf(zone_grid,1,168,timeseries_data,gurobi)
-results_EI = hourly_opf(zone_grid_EI,1,168,timeseries_data,gurobi)
-results_EI_0 = hourly_opf(zone_grid_EI_0,1,168,timeseries_data,gurobi)
+# This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
+result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
+
+STERNA_grid = _PM.parse_file(file_STERNA_grid)
+STERNA_grid_time_series = JSON.parsefile(file_STERNA_time_series)
+
+
+hour_start_idx = 1 
+hour_end_idx =  720
+
+s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
+# This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
+result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, STERNA_grid, timeseries_data, gurobi, s)
 
 obj = []
-obj_EI = []
-obj_EI_0 = []
-for i in 1:168
-    push!(obj,results["$i"]["objective"])
-    push!(obj_EI,results_EI["$i"]["objective"])
-    push!(obj_EI_0,results_EI_0["$i"]["objective"])
-end
-findall(@. isnan(obj))
-
-
-results_opf_1_720 = Dict{String,Any}()
-results_opf_1_720["no_investment"] = deepcopy(results)
-results_opf_1_720["EI_5900"] = deepcopy(results_EI)
-results_opf_1_720["EI_0"] = deepcopy(results_EI_0)
-
-json_string_data_un = JSON.json(results_opf_1_720)
-
-open(joinpath(folder_results,"BE_energy_island_simulations_1_720.json"),"w" ) do f
-    write(f,json_string_data_un)
-end
-
-results_4320_5040 = hourly_opf(zone_grid,4320,5040,timeseries_data,gurobi)
-results_EI_4320_5040 = hourly_opf(zone_grid_EI,4320,5040,timeseries_data,gurobi)
-results_EI_0_4320_5040 = hourly_opf(zone_grid_EI_0,4320,5040,timeseries_data,gurobi)
-
-results_opf_4320_5040 = Dict{String,Any}()
-results_opf_4320_5040["no_investment"] = deepcopy(results_4320_5040)
-results_opf_4320_5040["EI_5900"] = deepcopy(results_EI_4320_5040)
-results_opf_4320_5040["EI_0"] = deepcopy(results_EI_0_4320_5040)
-
-json_string_data_un = JSON.json(results_opf_4320_5040)
-
-open(joinpath(folder_results,"BE_energy_island_simulations_4320_5040.json"),"w" ) do f
-    write(f,json_string_data_un)
-end
-
-
-results_5760_6480 = hourly_opf(zone_grid,5760,6480,timeseries_data,gurobi)
-results_EI_5760_6480 = hourly_opf(zone_grid_EI,5760,6480,timeseries_data,gurobi)
-results_EI_0_5760_6480 = hourly_opf(zone_grid_EI_0,5760,6480,timeseries_data,gurobi)
-
-results_opf_5760_6480 = Dict{String,Any}()
-results_opf_5760_6480["no_investment"] = deepcopy(results_5760_6480)
-results_opf_5760_6480["EI_5900"] = deepcopy(results_EI_5760_6480)
-results_opf_5760_6480["EI_0"] = deepcopy(results_EI_0_5760_6480)
-
-json_string_data_un = JSON.json(results_opf_5760_6480)
-
-open(joinpath(folder_results,"BE_energy_island_simulations_5760_6480.json"),"w" ) do f
-    write(f,json_string_data_un)
+for i in 1:hour_end_idx
+    push!(obj,result["$i"]["termination_status"])
 end

@@ -4,7 +4,7 @@ using DataFrames
 
 # INSERT HERE THE LINK TO THE GRID MODEL
 ##############################################
-EU_grid = deepcopy(EU_grid)
+EU_grid = deepcopy(input_data)
 ##############################################
 
 nodes = [] # vector for the buses
@@ -21,7 +21,7 @@ for i in 1:length(EU_grid["bus"]) # number of ac buses here
         push!(type,0)
     end
 end    
-
+#=
 for i in 1:length(EU_grid["busdc"]) # number of dc buses here
     print(i,"\n")
     l = 10000 + i
@@ -39,7 +39,7 @@ for (b_id,b) in EU_grid["busdc"]
     push!(buses,parse(Int64,b_id))
 end
 sort(buses)
-
+=#
 
 
 branches = [] # vector for the branches
@@ -84,7 +84,7 @@ for i in 1:length(EU_grid["branch"]) # number of AC branches
     end
 end
 
-
+#=
 for i in 1:length(EU_grid["branchdc"]) # number of DC branches
     if EU_grid["branchdc"]["$i"]["name"][1:5] != "NSEH-" && EU_grid["branchdc"]["$i"]["name"][1:5] != "DE OF"
         print(EU_grid["branchdc"]["$i"]["name"],"\n")
@@ -102,7 +102,7 @@ for i in 1:length(EU_grid["branchdc"]) # number of DC branches
         push!(overload,1.0)
     end
 end
-
+=#
 
 # Creating dataframe dictionart
 dict_nodes =DataFrames.DataFrame("node"=>nodes,"lat"=>lat,"lon"=>lon, "type"=> type)
