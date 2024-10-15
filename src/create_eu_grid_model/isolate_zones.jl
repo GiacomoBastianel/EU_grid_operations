@@ -102,14 +102,18 @@ function add_borders!(zone_data, grid_data, zones; border_slack = 0)
                 f_bus = branch["f_bus"]
                 t_bus = branch["t_bus"]
                 border_buses = [grid_data["bus"]["$f_bus"]["zone"]  !== zone, grid_data["bus"]["$t_bus"]["zone"]  !== zone]
-                if findall(border_buses) == 1
+                border_bus = Dict()
+                if border_buses[1] == 1
                     border_bus = grid_data["bus"]["$f_bus"]
-                    branch["direction"] = "to"   
-                else
+                    branch["direction"] = "to"
+                    xb_zone = find_xb_zone(grid_data, border_bus, zone)   
+                elseif border_buses[2] == 1
                     border_bus = grid_data["bus"]["$t_bus"]
                     branch["direction"] = "from" 
+                    xb_zone = find_xb_zone(grid_data, border_bus, zone)
+                else
+                    xb_zone = ""
                 end
-                xb_zone = find_xb_zone(grid_data, border_bus, zone)
                 if !isempty(xb_zone)
                     if !any(xb_zone .== zones)
                         if !any(xb_zone .== borders)

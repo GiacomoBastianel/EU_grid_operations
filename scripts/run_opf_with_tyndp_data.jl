@@ -38,7 +38,7 @@ number_of_hours_rd = 5
 hour_start = 1
 hour_end = 8760
 ############ LOAD EU grid data
-file = "./data_sources/European_grid.json"
+file = "./data_sources/European_grid_no_nseh.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
 gurobi = Gurobi.Optimizer
 EU_grid = _PM.parse_file(file)
@@ -64,18 +64,21 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 
 # Isolate zone: input is vector of strings, if you need to relax the fixing border flow assumptions use:
 # _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = x), this will leas to (1-slack)*xb_flow_ref < xb_flow < (1+slack)*xb_flow_ref
-zone_grid = _EUGO.isolate_zones(EU_grid, ["DE"])
+zone_grid = _EUGO.isolate_zones(EU_grid, ["ES"])
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
 # (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
-timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zones = ["DE"])
+timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zones = ["BE"])
 
 push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)) 
 
 # Start runnning hourly OPF calculations
 hour_start_idx = 1 
 hour_end_idx =  8760
+
+plot_filename = joinpath("results", join(["grid_input.pdf"]))
+_EUGO.plot_grid(zone_grid, plot_filename)
 
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 # This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
