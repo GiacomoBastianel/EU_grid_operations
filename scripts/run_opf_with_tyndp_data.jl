@@ -37,6 +37,7 @@ number_of_clusters = 20
 number_of_hours_rd = 5
 hour_start = 1
 hour_end = 8760
+isolated_zones = ["BE"]
 ############ LOAD EU grid data
 file = "./data_sources/European_grid_no_nseh.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
@@ -64,12 +65,12 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 
 # Isolate zone: input is vector of strings, if you need to relax the fixing border flow assumptions use:
 # _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = x), this will leas to (1-slack)*xb_flow_ref < xb_flow < (1+slack)*xb_flow_ref
-zone_grid = _EUGO.isolate_zones(EU_grid, ["ES"])
+zone_grid = _EUGO.isolate_zones(EU_grid, isolated_zones)
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
 # (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
-timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zones = ["BE"])
+timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zones = isolated_zones)
 
 push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)) 
 
@@ -87,4 +88,3 @@ result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_dat
 # An alternative is to run it in chuncks of "batch_size", which will store the results as json files, e.g. hour_1_to_batch_size, ....
 batch_size = 730
 _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
-

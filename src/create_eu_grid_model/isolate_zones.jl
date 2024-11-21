@@ -18,58 +18,72 @@ function isolate_zones(grid_data, zones; border_slack = 0)
     zone_data["switch"] = Dict{String, Any}()
     zone_data["dcline"] = Dict{String, Any}()
     zone_data["zonal_peak_demand"] = 0
+
+    # first add all buses to the actual zones
     for zone in zones
         for (b, bus) in grid_data["bus"]
             if haskey(bus, "zone") && bus["zone"] == zone
                 zone_data["bus"][b] = bus
-            elseif haskey(bus, "zone") && bus["zone"] == "XB_node"
-                bus_id = bus["index"]
-                for (br, branch) in grid_data["branch"]
-                    if branch["interconnector"] == true
-                        if branch["f_bus"] == bus_id 
-                            t_bus_id = branch["t_bus"]
-                            t_bus = grid_data["bus"]["$t_bus_id"]
-                            if haskey(t_bus, "zone") && t_bus["zone"] == zone
-                                println("XB_node ", t_bus_id, " assinged to zone ", zone)
-                                zone_data["bus"][b] = bus
-                                zone_data["bus"][b]["zone"] = zone
-                            end
-                        elseif branch["t_bus"] == bus_id
-                            f_bus_id = branch["f_bus"]
-                            f_bus = grid_data["bus"]["$f_bus_id"]
-                            if haskey(f_bus, "zone") && f_bus["zone"] == zone
-                                println("XB_node ", f_bus_id, " assinged to zone ", zone)
-                                zone_data["bus"][b] = bus
-                                zone_data["bus"][b]["zone"] = zone
-                            end
-                        end
+            end
+        end
+    end
+    for zone in zones
+        # then find all XB nodes and assign them to the first zone of ones in the list
+        for (br, branch) in grid_data["branch"]
+            # Only interested in interconnectors
+            if branch["interconnector"] == true
+                fbus_id = branch["f_bus"]
+                tbus_id = branch["t_bus"]
+                # check if the from bus belongs to the actual zone
+                if haskey(grid_data["bus"]["$fbus_id"], "zone") && grid_data["bus"]["$fbus_id"]["zone"] == zone
+                    # check here if the XB bus is already assigned to a zone -> this can happen when merging two neighbouring zones, we don;t want to double count!
+                    if !haskey(zone_data["bus"],"$tbus_id") && haskey(grid_data["bus"]["$tbus_id"],"zone") &&  grid_data["bus"]["$tbus_id"]["zone"]  == "XB_node"
+                        println("XB_node ", tbus_id, " assinged to zone ", zone)
+                        zone_data["bus"]["$tbus_id"]= deepcopy(grid_data["bus"]["$tbus_id"])
+                        zone_data["bus"]["$tbus_id"]["zone"] = zone
+                    end
+                end
+                # check ifthe to bus belongs to the actual zone
+                if haskey(grid_data["bus"]["$tbus_id"], "zone") && grid_data["bus"]["$tbus_id"]["zone"] == zone
+                    # check here if the XB bus is already assigned to a zone -> this can happen when merging two neighbouring zones, we don;t want to double count!
+                    if !haskey(zone_data["bus"],"$fbus_id") && haskey(grid_data["bus"]["$fbus_id"],"zone") &&  grid_data["bus"]["$fbus_id"]["zone"]  == "XB_node" 
+                        println("XB_node ", fbus_id, " assinged to zone ", zone)
+                        zone_data["bus"]["$fbus_id"] = deepcopy(grid_data["bus"]["$fbus_id"])
+                        zone_data["bus"]["$fbus_id"]["zone"] = zone
                     end
                 end
             end
         end
+    end
+
+    for zone in zones
         for (g, gen) in grid_data["gen"]
             if haskey(gen, "zone") && gen["zone"] == zone
                 zone_data["gen"][g] = gen
             end
         end
+
         for (l, load) in grid_data["load"]
             if haskey(load, "zone") && load["zone"] == zone
                 zone_data["load"][l] = load
             end
         end
+
         for (s, storage) in grid_data["storage"]
             if haskey(storage, "zone") && storage["zone"] == zone
                 zone_data["storage"][s] = storage
             end
         end
+
         for (b, branch) in grid_data["branch"]
             f_bus = branch["f_bus"]
             t_bus = branch["t_bus"]
-            if (haskey(grid_data["bus"]["$f_bus"], "zone") && grid_data["bus"]["$f_bus"]["zone"]  == zone) || (haskey(grid_data["bus"]["$t_bus"], "zone") && grid_data["bus"]["$t_bus"]["zone"] == zone)
+            # Add any branch that has either the from or the to node connected to the isolated grid
+            if (haskey(zone_data["bus"], "$f_bus") && zone_data["bus"]["$f_bus"]["zone"]  == zone) || (haskey(zone_data["bus"], "$t_bus") && zone_data["bus"]["$t_bus"]["zone"] == zone)
                 zone_data["branch"][b] = branch
             end
-            # To Do, check also for xb lines
         end
+
         for (c, conv) in grid_data["convdc"]
             bus_ac = conv["busac_i"]
             bus_dc = conv["busdc_i"]
@@ -78,6 +92,7 @@ function isolate_zones(grid_data, zones; border_slack = 0)
                 zone_data["busdc"]["$bus_dc"] = grid_data["busdc"]["$bus_dc"]
             end
         end
+
         for (b, branch) in grid_data["branchdc"]
             f_bus = branch["fbusdc"]
             t_bus = branch["tbusdc"]
@@ -88,29 +103,36 @@ function isolate_zones(grid_data, zones; border_slack = 0)
     end
     add_borders!(zone_data, grid_data, zones; border_slack = border_slack)
 
-
     return zone_data
 end
 
 
+# This function is to add remaining XB lines, converters etc. to the system
 function add_borders!(zone_data, grid_data, zones; border_slack = 0)
     zone_data["borders"] = Dict{String, Any}()
     borders = []
     for zone in zones
         for (b, branch) in zone_data["branch"]
             if branch["interconnector"] == true
-                f_bus = branch["f_bus"]
-                t_bus = branch["t_bus"]
-                border_buses = [grid_data["bus"]["$f_bus"]["zone"]  !== zone, grid_data["bus"]["$t_bus"]["zone"]  !== zone]
+            f_bus = branch["f_bus"]
+            t_bus = branch["t_bus"]
+            border_buses = [0 0]
+                # As we already processed the interconnectors connected to XB nodes, we only want to have the ones that come from the neighboring zone to the XB node.  
+                if haskey(zone_data["bus"], "$f_bus") && !haskey(zone_data["bus"], "$t_bus")
+                    border_buses = [0, grid_data["bus"]["$t_bus"]["zone"]  !== zone]
+                end
+                if haskey(zone_data["bus"], "$t_bus") && !haskey(zone_data["bus"], "$f_bus")
+                    border_buses = [grid_data["bus"]["$f_bus"]["zone"]  !== zone, 0]
+                end
                 border_bus = Dict()
                 if border_buses[1] == 1
                     border_bus = grid_data["bus"]["$f_bus"]
                     branch["direction"] = "to"
-                    xb_zone = find_xb_zone(grid_data, border_bus, zone)   
+                    xb_zone =grid_data["bus"]["$f_bus"]["zone"]   
                 elseif border_buses[2] == 1
                     border_bus = grid_data["bus"]["$t_bus"]
                     branch["direction"] = "from" 
-                    xb_zone = find_xb_zone(grid_data, border_bus, zone)
+                    xb_zone = grid_data["bus"]["$f_bus"]["zone"]
                 else
                     xb_zone = ""
                 end
@@ -231,20 +253,18 @@ end
 function find_xb_zone(grid_data, xb_bus, zone)
     xb_zone = ""
     for (b, branch) in grid_data["branch"]
-        if branch["interconnector"] == true
-            if branch["f_bus"] == xb_bus["index"] || branch["t_bus"] == xb_bus["index"]
-                if branch["f_bus"] == xb_bus["index"]
-                    t_bus = branch["t_bus"] 
-                    if grid_data["bus"]["$t_bus"]["zone"] !== zone
-                        xb_zone = grid_data["bus"]["$t_bus"]["zone"]
-                    end 
-                end
-                if branch["t_bus"] == xb_bus["index"]
-                    f_bus = branch["f_bus"] 
-                    if grid_data["bus"]["$f_bus"]["zone"] !== zone
-                        xb_zone = grid_data["bus"]["$f_bus"]["zone"]
-                    end 
-                end
+        if branch["f_bus"] == xb_bus["index"] || branch["t_bus"] == xb_bus["index"]
+            if branch["f_bus"] == xb_bus["index"]
+                t_bus = branch["t_bus"] 
+                if grid_data["bus"]["$t_bus"]["zone"] !== zone
+                    xb_zone = grid_data["bus"]["$t_bus"]["zone"]
+                end 
+            end
+            if branch["t_bus"] == xb_bus["index"]
+                f_bus = branch["f_bus"] 
+                if grid_data["bus"]["$f_bus"]["zone"] !== zone
+                    xb_zone = grid_data["bus"]["$f_bus"]["zone"]
+                end 
             end
         end
     end
