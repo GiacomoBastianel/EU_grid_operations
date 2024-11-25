@@ -187,7 +187,7 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         end
     end
     for (g, gen) in grid_data["gen"]
-        zone = gen["country"]
+        zone = gen["zone"]
         if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
             gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
             gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
