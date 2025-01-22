@@ -31,20 +31,47 @@ gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 # Number of hours: 1 - 8760
 # Fetch data: true/false, to parse input data (takes ~ 1 min.)
 
-scenario = "GA2030"
-climate_year = "2007"
 fetch_data = true
-number_of_hours = 8760
+number_of_hours = 720
+
+
+scenario = "GA"
+year = "2030"
+climate_year = "2008"
+
 
 # Load grid and scenario data
 if fetch_data == true
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
-    ntcs, nodes, arcs, capacity, demand, gen_types, gen_costs, emission_factor, inertia_constants, node_positions = _EUGO.get_grid_data(scenario)
+    ntcs, nodes, arcs, capacity, demand, gen_types, gen_costs, emission_factor, inertia_constants, node_positions = _EUGO.get_grid_data_2024(scenario,year,climate_year)
 end
 
+#=
+for (b,bus) in input_data["bus"]
+    println(bus["string"], " ", bus["number"])
+end
+
+for (b,bus) in input_data["branch"]
+  if bus["f_bus"] == 9 && bus["t_bus"] == 11
+    println(b)
+  elseif bus["f_bus"] == 11 && bus["t_bus"] == 9
+    println(b)
+  end
+end
+input_data["branch"]["40"]
+
+for (b,bus) in input_data["branch"]
+  if bus["f_bus"] == 9 && bus["t_bus"] == 13
+    println(b)
+  elseif bus["f_bus"] == 13 && bus["t_bus"] == 9
+    println(b)
+  end
+end
+input_data["branch"]["41"]
+=#
 # Construct input data dictionary in PowerModels style 
 # Construct RES time and demand series, installed capacities on nodal (zonal) data
-input_data, nodal_data = _EUGO.construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
+input_data, nodal_data = _EUGO.construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
 
 input_data_raw = deepcopy(input_data)
 

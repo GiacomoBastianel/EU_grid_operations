@@ -94,7 +94,95 @@ function construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, clim
     
     return data, nodal_data
 end
+   
+function construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; co2_cost = 0.0)
+
+    data = Dict{String, Any}()
+    nodal_data = Dict{String, Any}()
+    data["bus"] = Dict{String, Any}()
+    data["gen"] = Dict{String, Any}()
+    data["branch"] = Dict{String, Any}()
+    data["load"] = Dict{String, Any}()
+    data["dcline"] = Dict{String, Any}()
+    data["storage"] = Dict{String, Any}()
+    data["switch"] = Dict{String, Any}()
+    data["areas"] = Dict{String, Any}()
+    data["shunt"] = Dict{String, Any}()
+    data["storage_simple"] = Dict{String, Any}()
+    data["source_version"] = "2"
+    data["name"] = "TYNDPzonal"
+    data["baseMVA"] = 100.0
+    data["per_unit"] = true
     
+    global g_idx = 1
+    global s_idx = 1
+    
+    print("######################################", "\n")
+    print("PROCESSING ZONAL GENERATION AND DEMAND", "\n")
+    print("######################################", "\n")
+    
+    for n in 1:size(nodes, 1)
+        node_id = nodes.node_id[n]
+        print(node_id, "\n")
+        nodal_data[node_id] = Dict{String, Any}()
+        nodal_data[node_id]["index"] = n
+        nodal_data[node_id]["demand"] = [get_demand_data(demand, node_id, hour) for hour in 1:8760]
+        nodal_data[node_id]["generation"] = Dict{String, Any}()
+    
+        for g in gen_types
+            nodal_data[node_id]["generation"][g] = Dict{String, Any}()
+            nodal_data[node_id]["generation"][g]["capacity"] = get_generation_capacity(capacity, scenario, g, climate_year, node_id)
+    
+            if g == "Solar PV" 
+                pv_series = pv[pv[!, "area"] .== node_id, climate_year]
+                if !any(pv_series .=== missing) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
+                    nodal_data[node_id]["generation"][g]["timeseries"] =  pv_series .* nodal_data[node_id]["generation"][g]["capacity"]
+                else
+                    nodal_data[node_id]["generation"][g]["timeseries"] = zeros(1, 8760)
+                end
+            elseif g == "Onshore Wind"
+                wind_series = wind_onshore[wind_onshore[!, "area"] .== node_id, climate_year]
+                if  !any(wind_series .=== missing) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
+                    nodal_data[node_id]["generation"][g]["timeseries"] =  wind_series .* nodal_data[node_id]["generation"][g]["capacity"]
+                else
+                    nodal_data[node_id]["generation"][g]["timeseries"] = zeros(1, 8760)
+                end
+            elseif g == "Offshore Wind"
+                wind_series =  wind_offshore[wind_offshore[!, "area"] .== node_id, climate_year]
+                if  !any(wind_series .=== missing) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
+                    nodal_data[node_id]["generation"][g]["timeseries"] = wind_series .* nodal_data[node_id]["generation"][g]["capacity"]
+                else
+                    nodal_data[node_id]["generation"][g]["timeseries"] = zeros(1, 8760)
+                end
+            end
+            if g == "Battery" # to do extend to reservoir & PS.....
+                add_storage!(data, s_idx, g, n, nodal_data, node_id)
+                s_idx = s_idx + 1
+            else
+                add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; co2_cost = co2_cost, ens = false)
+                g_idx = g_idx + 1
+            end
+            
+        end
+    
+        # Add one ENS generator to each node with cost = VOLL
+        add_gen!(data, g_idx, "ENS", gen_costs, emission_factor, inertia_constants, n, nodal_data, node_id; ens = true)
+        g_idx = g_idx + 1    
+    
+        #write bus data
+        add_bus!(data, n, node_id, nodes)
+    
+        #write load data
+        add_load!(data, n, nodal_data, node_id)
+    end
+    
+    # write branch data
+    for b in 1:size(ntcs, 1)
+        add_branch_2024!(data, ntcs, arcs, b, nodal_data)
+    end
+    
+    return data, nodal_data
+end
     
 function prepare_hourly_data!(data, nodal_data, hour)    
     for (l, load) in data["load"]
@@ -360,7 +448,69 @@ function add_branch!(data, ntcs, b, nodal_data)
     
     return data
 end
+   
+function add_branch_2024!(data, ntcs, arcs, b, nodal_data)
+    branch_id = ntcs[b, "Connection"]
+    f_bus_idx = nodal_data[arcs[b, "node_a"]]["index"]
+    t_bus_idx = nodal_data[arcs[b, "node_b"]]["index"]
+    reverse_name = join([arcs[b,"node_b"],"-",arcs[b, "node_a"]])
+    if b > 1
+        branch_names = Dict{String, Any}(branch["name"] => nothing for (b, branch) in data["branch"])
     
+        if !haskey(branch_names, reverse_name)
+            data["branch"]["$b"] = Dict{String, Any}()
+            data["branch"]["$b"]["f_bus"] = data["bus"]["$f_bus_idx"]["bus_i"]
+            data["branch"]["$b"]["t_bus"] = data["bus"]["$t_bus_idx"]["bus_i"]
+            data["branch"]["$b"]["rate_a"] =  ntcs[b, "NTC"] / data["baseMVA"]
+            data["branch"]["$b"]["rate_i"]  = ntcs[b, "NTC"] / data["baseMVA"]
+            data["branch"]["$b"]["rate_p"]  = ntcs[b, "NTC"] / data["baseMVA"]
+            data["branch"]["$b"]["name"] = branch_id
+        
+            data["branch"]["$b"]["transformer"] = false
+            data["branch"]["$b"]["tap"] = 1
+            data["branch"]["$b"]["shift"] = 0.0
+            data["branch"]["$b"]["angmin"] = -pi/2
+            data["branch"]["$b"]["angmax"] = -pi/2
+            data["branch"]["$b"]["index"] = b
+            data["branch"]["$b"]["br_r"] = 0.0
+            data["branch"]["$b"]["br_x"] = 0.1
+            data["branch"]["$b"]["g_fr"] = 0.0
+            data["branch"]["$b"]["g_to"] = 0.0
+            data["branch"]["$b"]["b_fr"] = 0.0
+            data["branch"]["$b"]["b_to"] = 0.0
+            data["branch"]["$b"]["source_id"] = ["branch", b]
+            data["branch"]["$b"]["br_status"] = 1
+            data["branch"]["$b"]["number_id"] = b
+        end
+    else
+        data["branch"]["$b"] = Dict{String, Any}()
+        data["branch"]["$b"]["f_bus"] = data["bus"]["$f_bus_idx"]["bus_i"]
+        data["branch"]["$b"]["t_bus"] = data["bus"]["$t_bus_idx"]["bus_i"]
+        data["branch"]["$b"]["rate_a"] =  ntcs[b, "NTC"] / data["baseMVA"]
+        data["branch"]["$b"]["rate_i"]  = ntcs[b, "NTC"] / data["baseMVA"]
+        data["branch"]["$b"]["rate_p"]  = ntcs[b, "NTC"] / data["baseMVA"]
+        data["branch"]["$b"]["name"] = branch_id
+    
+        data["branch"]["$b"]["transformer"] = false
+        data["branch"]["$b"]["tap"] = 1
+        data["branch"]["$b"]["shift"] = 0.0
+        data["branch"]["$b"]["angmin"] = -pi/2
+        data["branch"]["$b"]["angmax"] = -pi/2
+        data["branch"]["$b"]["index"] = b
+        data["branch"]["$b"]["br_r"] = 0.0
+        data["branch"]["$b"]["br_x"] = 0.1
+        data["branch"]["$b"]["g_fr"] = 0.0
+        data["branch"]["$b"]["g_to"] = 0.0
+        data["branch"]["$b"]["b_fr"] = 0.0
+        data["branch"]["$b"]["b_to"] = 0.0
+        data["branch"]["$b"]["source_id"] = ["branch", b]
+        data["branch"]["$b"]["br_status"] = 1
+        data["branch"]["$b"]["number_id"] = b
+    end
+    
+    return data
+end
+
 function prepare_mn_data_opf(grid_data, grid_data_raw, input_data, scenario_data, result, hour_start, hour_end, zone, wind_onshore, wind_offshore, pv)
     number_of_hours = hour_end - hour_start + 1
     hours = hour_start : hour_end
