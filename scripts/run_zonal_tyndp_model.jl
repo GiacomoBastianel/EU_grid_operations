@@ -53,9 +53,7 @@ fetch_data = true
 number_of_hours = 8760
 scenario = "GA"
 year = "2030"
-climate_year = "2007"
-
-
+climate_year = "1982"
 
 
 # Load grid and scenario data
@@ -88,20 +86,20 @@ end
 ## Write out JSON files
 # Result file, with hourly results
 json_string = JSON.json(result)
-result_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version, join(["result_zonal_tyndp_", scenario,"_", climate_year, ".json"]))
+result_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version, join(["result_zonal_tyndp_", scenario*year,"_", climate_year, ".json"]))
 open(result_file_name,"w") do f
   JSON.print(f, json_string)
 end
 
 # Input data dictionary as .json file
-input_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version,  join(["input_zonal_tyndp_", scenario,"_", climate_year, ".json"]))
+input_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version,  join(["input_zonal_tyndp_", scenario*year,"_", climate_year, ".json"]))
 json_string = JSON.json(input_data_raw)
 open(input_file_name,"w") do f
   JSON.print(f, json_string)
 end
 
 # scenario file (e.g. zonal time series and installed capacities) as .json file
-scenario_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version, join(["scenario_zonal_tyndp_", scenario,"_", climate_year, ".json"]))
+scenario_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version, join(["scenario_zonal_tyndp_", scenario*year,"_", climate_year, ".json"]))
 json_string = JSON.json(nodal_data)
 open(scenario_file_name,"w") do f
   JSON.print(f, json_string)
