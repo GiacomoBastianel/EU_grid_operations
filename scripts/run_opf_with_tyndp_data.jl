@@ -27,17 +27,12 @@ import StatsPlots
 scenario = "GA2030"
 climate_year = "2007"
 load_data = true
-use_case = "de_hvdc_backbone"
+use_case = "fr_es_pt"
 only_hvdc_case = false
 links = Dict("Ultranet" => [], "Suedostlink" => [] , "Suedlink" => [])
-zone = "DE00"
-output_base = "DE"
-output_cba = "DE_HVDC"
-number_of_clusters = 20
-number_of_hours_rd = 5
 hour_start = 1
 hour_end = 8760
-isolated_zones = ["BE"]
+isolated_zones = ["FR", "ES", "PT"]
 ############ LOAD EU grid data
 file = "./data_sources/European_grid_no_nseh.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year]))
@@ -65,7 +60,7 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 
 # Isolate zone: input is vector of strings, if you need to relax the fixing border flow assumptions use:
 # _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = x), this will leas to (1-slack)*xb_flow_ref < xb_flow < (1+slack)*xb_flow_ref
-zone_grid = _EUGO.isolate_zones(EU_grid, isolated_zones)
+zone_grid = _EUGO.isolate_zones(EU_grid, isolated_zones, border_slack = 0.01)
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
@@ -78,13 +73,14 @@ push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result,
 hour_start_idx = 1 
 hour_end_idx =  8760
 
-plot_filename = joinpath("results", join(["grid_input.pdf"]))
+plot_filename = joinpath("results", join(["grid_input_",use_case,".pdf"]))
 _EUGO.plot_grid(zone_grid, plot_filename)
 
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
 # This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
-result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
-
+# result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
+# obj = [result["$(i)"]["termination_status"] for i in 1:8760]; countmap(obj) # chcek objective
+ 
 # An alternative is to run it in chuncks of "batch_size", which will store the results as json files, e.g. hour_1_to_batch_size, ....
-batch_size = 730
+batch_size = 8760
 _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
