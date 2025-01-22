@@ -23,6 +23,8 @@ import StatsBase
 # Create our module level logger (this will get precompiled)
 const _LOGGER = Memento.getlogger(@__MODULE__)
 
+const BASE_DIR = dirname(@__DIR__)
+
 
 include("create_eu_grid_model/create_european_grid.jl")
 include("tyndp_model_matching/get_value.jl")

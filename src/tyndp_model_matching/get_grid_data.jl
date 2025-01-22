@@ -7,13 +7,24 @@
 # Function to extract ntcs, nodes, generation capacity,
 # demand time series and list of generator types
 # scenario{String}, e.g. "NT2025"
-function get_grid_data(scenario)    
+
+function get_grid_data(tyndp_version, scenario, year, climate_year)    
+    if tyndp_version == "2020"
+        return get_grid_data_2020(scenario, year, climate_year)
+    elseif tyndp_version == "2024"
+        return get_grid_data_2024(scenario, year, climate_year)
+    else
+        error("TYNDP version not supported")
+    end
+end
+
+function get_grid_data_2020(scenario, year, climate_year)    
     # data source: https://www.entsoe.eu/Documents/TYNDP%20documents/TYNDP2020/Reference%20Grid%202025%20-%20TYNDP%202020.xlsx    
     file_lines = "./data_sources/Reference Grid 2025 - TYNDP 2020.xlsx"
     # data source: https://2020.entsos-tyndp-scenarios.eu/wp-content/uploads/2020/06/TYNDP-2020-Scenario-Datafile.xlsx.zip
     file_data = "./data_sources/TYNDP-2020-Scenario-Datafile.xlsx"
     # data source for all demand time series: https://tyndp.entsoe.eu/maps-data 
-    file_demand = "./data_sources/"*scenario*"_Demand_CY1984.csv"
+    file_demand = joinpath(BASE_DIR,"data_sources", join([scenario,year,"_Demand_CY1984.csv"]))
 
     # Create dataframes from CSV/XLS files
     lines = XLSX.readtable(file_lines, "2025")
@@ -303,9 +314,9 @@ function get_grid_data_2024(scenario, year, climate_year)
     # data source: https://2020.entsos-tyndp-scenarios.eu/wp-content/uploads/2020/06/TYNDP-2020-Scenario-Datafile.xlsx.zip
     file_data = "./data_sources/LIST OF NODES_2024.xlsx"
     # data source for all demand time series: https://tyndp.entsoe.eu/maps-data 
-    file_demand = "./data_sources/Demand_Profiles_TYNDP_2024/$(scenario)/$(year)/Demand_$(scenario)$(year)_$(climate_year).csv"
+    file_demand = "./data_sources/TYNDP2024/Demand_Profiles/$(scenario)/$(year)/Demand_$(scenario)$(year)_$(climate_year).csv"
 
-    file_capacity = "./data_sources/PEMMDB2/$(scenario)/$(year)/Installed_generation_capacity_$(scenario)$(year)_MW.csv"
+    file_capacity = "./data_sources/TYNDP2024/PEMMDB2/$(scenario)/$(year)/Installed_generation_capacity_$(scenario)$(year)_MW.csv"
     #year = 2030
     #file_capacity = joinpath(dirname(dirname(@__DIR__)),"data_sources/PEMMDB2/$(year)/Installed_generation_capacity_NationalTrends_$(year)_GW.csv")
 

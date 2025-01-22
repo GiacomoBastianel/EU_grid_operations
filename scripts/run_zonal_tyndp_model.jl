@@ -19,22 +19,30 @@ import Feather
 import PowerModels; const _PM = PowerModels
 import JSON
 using EU_grid_operations; const _EUGO = EU_grid_operations
-gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 
-# Add auxiliary functions to construct input and scenario data dictionary
+# Select your favorite solver
+solver = JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 
+# Select the TYNDP version to be used:
+# - 2020
+# - 2024
+tyndp_version = "2024"
 
 # Select input paramters for:
-# Scenario selection: Distributed Energy (DE), National Trends (NT), Global Ambition (GA)
-# Planning years: 2025 (NT only), 2030, 2040
-# Climate year: 1982, 1984, 2007
-# Number of hours: 1 - 8760
+# TYNDP 2020:
+#  - Scenario selection: Distributed Energy (DE), National Trends (NT), Global Ambition (GA)
+#  - Planning years: 2025 (NT only), 2030, 2040
+#  - Climate year: 1982, 1984, 2007
+#  - Number of hours: 1 - 8760
+# TYNDP 2024:
+#  - Scenario selection: Distributed Energy (DE), National Trends (NT), Global Ambition (GA)
+#  -  Planning years: 2030, 2040, 2050
+#  -  Climate year: 1995, 2008, 2009
+#  -  Number of hours: 1 - 8760
 # Fetch data: true/false, to parse input data (takes ~ 1 min.)
 
 fetch_data = true
 number_of_hours = 720
-
-
 scenario = "GA"
 year = "2030"
 climate_year = "2008"
@@ -43,7 +51,7 @@ climate_year = "2008"
 # Load grid and scenario data
 if fetch_data == true
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
-    ntcs, nodes, arcs, capacity, demand, gen_types, gen_costs, emission_factor, inertia_constants, node_positions = _EUGO.get_grid_data_2024(scenario,year,climate_year)
+    ntcs, nodes, arcs, capacity, demand, gen_types, gen_costs, emission_factor, inertia_constants, node_positions = _EUGO.get_grid_data(tyndp_version, scenario, year, climate_year)
 end
 
 #=
@@ -87,7 +95,7 @@ for hour = 1:number_of_hours
     # Write time series data into input data dictionary
     _EUGO.prepare_hourly_data!(input_data, nodal_data, hour)
     # Solve Network Flow OPF using PowerModels
-    result["$hour"] = _PM.solve_opf(input_data, PowerModels.NFAPowerModel, gurobi) 
+    result["$hour"] = _PM.solve_opf(input_data, PowerModels.NFAPowerModel, solver) 
 end
 
 ## Write out JSON files
