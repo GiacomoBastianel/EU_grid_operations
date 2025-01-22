@@ -26,7 +26,6 @@ solver = JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 # Select the TYNDP version to be used:
 # - 2020
 # - 2024
-tyndp_version = "2024"
 
 # Select input paramters for:
 # TYNDP 2020:
@@ -41,11 +40,22 @@ tyndp_version = "2024"
 #  -  Number of hours: 1 - 8760
 # Fetch data: true/false, to parse input data (takes ~ 1 min.)
 
+# A sample set for TYNDP 2024
+# tyndp_version = "2024"
+# fetch_data = true
+# number_of_hours = 8760
+# scenario = "GA"
+# year = "2030"
+# climate_year = "2008"
+# A sample set for TYNDP 2020
+tyndp_version = "2020"
 fetch_data = true
-number_of_hours = 720
+number_of_hours = 8760
 scenario = "GA"
 year = "2030"
-climate_year = "2008"
+climate_year = "2007"
+
+
 
 
 # Load grid and scenario data
@@ -54,33 +64,10 @@ if fetch_data == true
     ntcs, nodes, arcs, capacity, demand, gen_types, gen_costs, emission_factor, inertia_constants, node_positions = _EUGO.get_grid_data(tyndp_version, scenario, year, climate_year)
 end
 
-#=
-for (b,bus) in input_data["bus"]
-    println(bus["string"], " ", bus["number"])
-end
-
-for (b,bus) in input_data["branch"]
-  if bus["f_bus"] == 9 && bus["t_bus"] == 11
-    println(b)
-  elseif bus["f_bus"] == 11 && bus["t_bus"] == 9
-    println(b)
-  end
-end
-input_data["branch"]["40"]
-
-for (b,bus) in input_data["branch"]
-  if bus["f_bus"] == 9 && bus["t_bus"] == 13
-    println(b)
-  elseif bus["f_bus"] == 13 && bus["t_bus"] == 9
-    println(b)
-  end
-end
-input_data["branch"]["41"]
-=#
 # Construct input data dictionary in PowerModels style 
-# Construct RES time and demand series, installed capacities on nodal (zonal) data
-input_data, nodal_data = _EUGO.construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
+input_data, nodal_data = _EUGO.construct_data_dictionary(tyndp_version, ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
 
+# Make copy of input data dictionary as RES and demand data updated for each hour
 input_data_raw = deepcopy(input_data)
 
 
@@ -101,20 +88,20 @@ end
 ## Write out JSON files
 # Result file, with hourly results
 json_string = JSON.json(result)
-result_file_name = join(["./results/result_zonal_tyndp_", scenario,"_", climate_year, ".json"])
+result_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version, join(["result_zonal_tyndp_", scenario,"_", climate_year, ".json"]))
 open(result_file_name,"w") do f
   JSON.print(f, json_string)
 end
 
 # Input data dictionary as .json file
-input_file_name = join(["./results/input_zonal_tyndp_", scenario,"_", climate_year, ".json"])
+input_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version,  join(["input_zonal_tyndp_", scenario,"_", climate_year, ".json"]))
 json_string = JSON.json(input_data_raw)
 open(input_file_name,"w") do f
   JSON.print(f, json_string)
 end
 
 # scenario file (e.g. zonal time series and installed capacities) as .json file
-scenario_file_name = join(["./results/scenario_zonal_tyndp_", scenario,"_", climate_year, ".json"])
+scenario_file_name = joinpath(_EUGO.BASE_DIR, "results", "TYNDP"*tyndp_version, join(["scenario_zonal_tyndp_", scenario,"_", climate_year, ".json"]))
 json_string = JSON.json(nodal_data)
 open(scenario_file_name,"w") do f
   JSON.print(f, json_string)

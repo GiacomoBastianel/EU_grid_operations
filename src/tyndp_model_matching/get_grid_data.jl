@@ -20,11 +20,11 @@ end
 
 function get_grid_data_2020(scenario, year, climate_year)    
     # data source: https://www.entsoe.eu/Documents/TYNDP%20documents/TYNDP2020/Reference%20Grid%202025%20-%20TYNDP%202020.xlsx    
-    file_lines = "./data_sources/Reference Grid 2025 - TYNDP 2020.xlsx"
+    file_lines = joinpath(BASE_DIR,"data_sources", "TYNDP2020","Reference Grid 2025 - TYNDP 2020.xlsx")
     # data source: https://2020.entsos-tyndp-scenarios.eu/wp-content/uploads/2020/06/TYNDP-2020-Scenario-Datafile.xlsx.zip
-    file_data = "./data_sources/TYNDP-2020-Scenario-Datafile.xlsx"
+    file_data = joinpath(BASE_DIR,"data_sources", "TYNDP2020","TYNDP-2020-Scenario-Datafile.xlsx")
     # data source for all demand time series: https://tyndp.entsoe.eu/maps-data 
-    file_demand = joinpath(BASE_DIR,"data_sources", join([scenario,year,"_Demand_CY1984.csv"]))
+    file_demand = joinpath(BASE_DIR,"data_sources", "TYNDP2020", join([scenario,year,"_Demand_CY1984.csv"]))
 
     # Create dataframes from CSV/XLS files
     lines = XLSX.readtable(file_lines, "2025")
@@ -310,15 +310,12 @@ end
 
 function get_grid_data_2024(scenario, year, climate_year)    
     # data source: https://2024.entsos-tyndp-scenarios.eu/download/#:~:text=Electricity%20and%20Hydrogen%20Reference%20Grid%20%26%20Investment%20Candidates%20After%20Public%20Consultation    
-    file_lines = "./data_sources/20231103 - Electricity and Hydrogen Reference Grid & Investment Candidates 3_modified.xlsx"
+    file_lines = joinpath(BASE_DIR,"data_sources", "TYNDP2024", "20231103 - Electricity and Hydrogen Reference Grid & Investment Candidates 3_modified.xlsx")
     # data source: https://2020.entsos-tyndp-scenarios.eu/wp-content/uploads/2020/06/TYNDP-2020-Scenario-Datafile.xlsx.zip
-    file_data = "./data_sources/LIST OF NODES_2024.xlsx"
+    file_data = joinpath(BASE_DIR,"data_sources", "TYNDP2024","LIST OF NODES_2024.xlsx")
     # data source for all demand time series: https://tyndp.entsoe.eu/maps-data 
-    file_demand = "./data_sources/TYNDP2024/Demand_Profiles/$(scenario)/$(year)/Demand_$(scenario)$(year)_$(climate_year).csv"
-
-    file_capacity = "./data_sources/TYNDP2024/PEMMDB2/$(scenario)/$(year)/Installed_generation_capacity_$(scenario)$(year)_MW.csv"
-    #year = 2030
-    #file_capacity = joinpath(dirname(dirname(@__DIR__)),"data_sources/PEMMDB2/$(year)/Installed_generation_capacity_NationalTrends_$(year)_GW.csv")
+    file_demand = joinpath(BASE_DIR,"data_sources", "TYNDP2024","Demand_Profiles","$(scenario)", "$(year)","Demand_$(scenario)$(year)_$(climate_year).csv")
+    file_capacity = joinpath(BASE_DIR,"data_sources", "TYNDP2024","Demand_Profiles","$(scenario)", "$(year)","Installed_generation_capacity_$(scenario)$(year)_MW.csv")
 
     # Create dataframes from CSV/XLS files
     lines = XLSX.readtable(file_lines, "1. Elec Ref Grid")
