@@ -6,11 +6,11 @@
 # hourly RES generation and demand values
 #######################################
 
-function construct_data_dictionary(tyndp_version, ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
+function construct_data_dictionary(tyndp_version, ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; kwargs...)
     if tyndp_version == "2024"
-        return construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
+        return construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; kwargs...)
     elseif tyndp_version == "2020"
-        return construct_data_dictionary_2020(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
+        return construct_data_dictionary_2020(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; kwargs...)
     else    
         error("Invalid TYNDP version")
     end
@@ -133,7 +133,6 @@ function construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, sce
     
     for n in 1:size(nodes, 1)
         node_id = nodes.node_id[n]
-        print(node_id, "\n")
         nodal_data[node_id] = Dict{String, Any}()
         nodal_data[node_id]["index"] = n
         nodal_data[node_id]["demand"] = [get_demand_data(demand, node_id, hour) for hour in 1:8760]
@@ -141,7 +140,7 @@ function construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, sce
     
         for g in gen_types
             nodal_data[node_id]["generation"][g] = Dict{String, Any}()
-            nodal_data[node_id]["generation"][g]["capacity"] = get_generation_capacity(capacity, scenario, g, climate_year, node_id)
+            nodal_data[node_id]["generation"][g]["capacity"] = get_generation_capacity_2024(capacity, g, node_id)
     
             if g == "Solar PV" 
                 pv_series = pv[pv[!, "area"] .== node_id, climate_year]
@@ -207,6 +206,7 @@ function prepare_hourly_data!(data, nodal_data, hour)
         elseif gen["type"] == "Onshore Wind"
             gen["pmax"] = nodal_data[node]["generation"]["Onshore Wind"]["timeseries"][hour] / data["baseMVA"]
         elseif gen["type"] == "Offshore Wind"
+            println(node)
             gen["pmax"] = nodal_data[node]["generation"]["Offshore Wind"]["timeseries"][hour] / data["baseMVA"]
         elseif gen["type"] == "ENS"
             gen["pmax"] = nodal_data[node]["demand"][hour] / data["baseMVA"]

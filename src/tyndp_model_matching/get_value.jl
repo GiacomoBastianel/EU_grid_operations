@@ -36,11 +36,14 @@ end
 
 
 
-function get_generation_capacity_2024(capacity, scenario, year, type, climate_year, node)
+function get_generation_capacity_2024(capacity, type, node)
     nodal_gen = capacity[capacity[!, "Node_Line"] .== node, :]
     nodal_gen_type = nodal_gen[nodal_gen[!, "Generator_ID"] .== type, :]
-    values = nodal_gen_type[nodal_gen_type[!, "Simulation_ID"] .== scenario, :]
-    value = values[values[!, "ClimateYear"] .== parse(Int, climate_year), "Value"]
+    if isempty(nodal_gen_type[!, "Value"])
+        value = 0.0
+    else
+        value =  nodal_gen_type[!, "Value"][1]
+    end
     return value
 end
 # Extract hourly RES capacity factors from RES time series

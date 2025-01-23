@@ -24,19 +24,34 @@ import Plots
 using EU_grid_operations; const _EUGO = EU_grid_operations
 gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer)
 
-# Add auxiliary functions to construct input and scenario data dictionary
-
-
 # Select input paramters for:
-# Scenario selection: Distributed Energy (DE), National Trends (NT), Global Ambition (GA)
-# Planning years: 2025 (NT only), 2030, 2040
-# Climate year: 1982, 1984, 2007
-# Number of hours: 1 - 8760
+# TYNDP 2020:
+#  - Scenario selection: Distributed Energy (DE), National Trends (NT), Global Ambition (GA)
+#  - Planning years: 2025 (NT only), 2030, 2040
+#  - Climate year: 1982, 1984, 2007
+#  - Number of hours: 1 - 8760
+# TYNDP 2024:
+#  - Scenario selection: Distributed Energy (DE), National Trends (NT), Global Ambition (GA)
+#  -  Planning years: 2030, 2040, 2050
+#  -  Climate year: 1995, 2008, 2009
+#  -  Number of hours: 1 - 8760
 # Fetch data: true/false, to parse input data (takes ~ 1 min.)
 
-scenario = "GA2040"
-climate_year = "1982"
+# A sample set for TYNDP 2024
+tyndp_version = "2024"
 fetch_data = true
+number_of_hours = 8760
+scenario = "DE"
+year = "2050"
+climate_year = "2009"
+# A sample set for TYNDP 2020
+# tyndp_version = "2020"
+# fetch_data = true
+# number_of_hours = 8760
+# scenario = "DE"
+# year = "2040"
+# climate_year = "2007"
+
 hours = 1:8760
 ns_wind_power = 300e3 # in MW
 file_name = "NSOW_zonal"
@@ -44,13 +59,13 @@ co2_cost = 45
 
 # Load grid and scenario data
 if fetch_data == true
-    pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
-    ntcs, nodes, arcs, capacity, demand, gen_types, gen_costs, emission_factor, inertia_constants, node_positions = _EUGO.get_grid_data(scenario)
+  pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
+  ntcs, nodes, arcs, capacity_2020_template, demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(tyndp_version, scenario, year, climate_year)
 end
 
 # Construct input data dictionary in PowerModels style 
 # Construct RES time and demand series, installed capacities on nodal (zonal) data
-input_data, nodal_data = _EUGO.construct_data_dictionary(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; co2_cost = 50.0)
+input_data, nodal_data = _EUGO.construct_data_dictionary(tyndp_version, ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; co2_cost = 50.0)
 
 _EUGO.add_north_sea_wind_zonal!(input_data, nodal_data, ns_wind_power, co2_cost; branch_cap = 150e3)
 input_data_raw = deepcopy(input_data)

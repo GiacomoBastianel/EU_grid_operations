@@ -312,7 +312,7 @@ function get_grid_data_2024(scenario, year, climate_year)
     # data source: https://2024.entsos-tyndp-scenarios.eu/download/#:~:text=Electricity%20and%20Hydrogen%20Reference%20Grid%20%26%20Investment%20Candidates%20After%20Public%20Consultation    
     file_lines = joinpath(BASE_DIR,"data_sources", "TYNDP2024", "20231103 - Electricity and Hydrogen Reference Grid & Investment Candidates 3_modified.xlsx")
     # data source: https://2020.entsos-tyndp-scenarios.eu/wp-content/uploads/2020/06/TYNDP-2020-Scenario-Datafile.xlsx.zip
-    file_data = joinpath(BASE_DIR,"data_sources", "TYNDP2024","LIST OF NODES_2024.xlsx")
+    file_nodes = joinpath(BASE_DIR,"data_sources", "TYNDP2024","LIST OF NODES_2024.xlsx")
     # data source for all demand time series: https://tyndp.entsoe.eu/maps-data 
     file_demand = joinpath(BASE_DIR,"data_sources", "TYNDP2024","Demand_Profiles","$(scenario)", "$(year)","Demand_$(scenario)$(year)_$(climate_year).csv")
     file_capacity = joinpath(BASE_DIR,"data_sources", "TYNDP2024","PEMMDB2","$(scenario)", "$(year)","Installed_generation_capacity_$(scenario)$(year)_MW.csv")
@@ -337,7 +337,7 @@ function get_grid_data_2024(scenario, year, climate_year)
     end
     ntcs = _DF.DataFrame(Connection = lines_complete, NTC = ntcs)
     
-    nodes_ = XLSX.readtable(file_data, "Electricity")
+    nodes_ = XLSX.readtable(file_nodes, "Electricity")
     nodes = _DF.DataFrame(node_id = nodes_[1][1][1:82], country_text = nodes_[1][2][1:82], country = nodes_[1][3][1:82], previous_node = nodes_[1][4][1:82], latitude = nodes_[1][5][1:82], longitude = nodes_[1][6][1:82], region = nodes_[1][7][1:82], EU28 = nodes_[1][8][1:82])
     
     arcs = _DF.DataFrame(line_id = lines_complete, node_a = node_a_, node_b = node_b_)
