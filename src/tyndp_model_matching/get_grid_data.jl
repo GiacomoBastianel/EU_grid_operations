@@ -315,7 +315,7 @@ function get_grid_data_2024(scenario, year, climate_year)
     file_data = joinpath(BASE_DIR,"data_sources", "TYNDP2024","LIST OF NODES_2024.xlsx")
     # data source for all demand time series: https://tyndp.entsoe.eu/maps-data 
     file_demand = joinpath(BASE_DIR,"data_sources", "TYNDP2024","Demand_Profiles","$(scenario)", "$(year)","Demand_$(scenario)$(year)_$(climate_year).csv")
-    file_capacity = joinpath(BASE_DIR,"data_sources", "TYNDP2024","Demand_Profiles","$(scenario)", "$(year)","Installed_generation_capacity_$(scenario)$(year)_MW.csv")
+    file_capacity = joinpath(BASE_DIR,"data_sources", "TYNDP2024","PEMMDB2","$(scenario)", "$(year)","Installed_generation_capacity_$(scenario)$(year)_MW.csv")
 
     # Create dataframes from CSV/XLS files
     lines = XLSX.readtable(file_lines, "1. Elec Ref Grid")
