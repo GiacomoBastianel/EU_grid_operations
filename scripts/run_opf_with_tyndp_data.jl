@@ -24,12 +24,12 @@ using StatsBase
 import StatsPlots
 
 ######### DEFINE INPUT PARAMETERS
-scenario = "GA2030"
-climate_year = "2007"
+tyndp_version = "2024"
+scenario = "GA"
+year = "2050"
+climate_year = "2008"
 load_data = true
 use_case = "fr_es_pt"
-only_hvdc_case = false
-links = Dict("Ultranet" => [], "Suedostlink" => [] , "Suedlink" => [])
 hour_start = 1
 hour_end = 8760
 isolated_zones = ["FR", "ES", "PT"]
@@ -43,8 +43,8 @@ _EUGO.add_load_and_pst_properties!(EU_grid)
 
 #### LOAD TYNDP SCENARIO DATA ##########
 if load_data == true
-    zonal_result, zonal_input, scenario_data = _EUGO.load_results(scenario, climate_year) # Import zonal results
-    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(scenario) # import zonal input (mainly used for cost data)
+    zonal_result, zonal_input, scenario_data = _EUGO.load_results(tyndp_version, scenario, year, climate_year) # Import zonal results
+    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(tyndp_version, scenario, year, climate_year) # import zonal input (mainly used for cost data)
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
 end
 

@@ -1,7 +1,7 @@
-function load_results(scenario, climate_year; file_name = "result_zonal_tyndp")
-    result_file_name =   "./results/"*file_name*"_"*scenario*"_"*climate_year*".json"
-    input_file_name =    "./results/input_zonal_tyndp_"*scenario*"_"*climate_year*".json"
-    scenario_file_name = "./results/scenario_zonal_tyndp_"*scenario*"_"*climate_year*".json"
+function load_results(tyndp_version, scenario, year, climate_year; file_name = "result_zonal_tyndp")
+    result_file_name =   joinpath(BASE_DIR, "results", "TYNDP"*tyndp_version, file_name*"_"*scenario*year*"_"*climate_year*".json")
+    input_file_name =    joinpath(BASE_DIR, "results", "TYNDP"*tyndp_version, "input_zonal_tyndp_"*scenario*year*"_"*climate_year*".json")
+    scenario_file_name = joinpath(BASE_DIR, "results", "TYNDP"*tyndp_version, "scenario_zonal_tyndp_"*scenario*year*"_"*climate_year*".json")
 
     result = Dict()
     input_data = Dict()
