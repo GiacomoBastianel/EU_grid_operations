@@ -11,10 +11,11 @@ function load_res_data()
  # wind_offhore_file_link = "https://zenodo.org/record/3702418/files/PECD-MAF2019-wide-WindOffshore.feather?download=1"
  # pv_file_link = "https://zenodo.org/record/3702418/files/PECD-MAF2019-wide-PV.feather?download=1" 
 
+ path = BASE_DIR
  # If files are saved locally under folder scenarios
- file_wind_onshore  = "./data_sources/PECD-MAF2019-wide-WindOnshore.feather"
- file_wind_offshore = "./data_sources/PECD-MAF2019-wide-WindOffshore.feather"
- file_pv            = "./data_sources/PECD-MAF2019-wide-PV.feather"                 
+ file_wind_onshore  = joinpath(path, "data_sources", "PECD-MAF2019-wide-WindOnshore.feather")
+ file_wind_offshore = joinpath(path, "data_sources", "PECD-MAF2019-wide-WindOffshore.feather")
+ file_pv            = joinpath(path, "data_sources", "PECD-MAF2019-wide-PV.feather")                 
 
  pv = Feather.read(file_pv) 
  wind_onshore = Feather.read(file_wind_onshore)

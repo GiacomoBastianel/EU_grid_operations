@@ -133,6 +133,7 @@ function construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, sce
     
     for n in 1:size(nodes, 1)
         node_id = nodes.node_id[n]
+        print(node_id, "\n")
         nodal_data[node_id] = Dict{String, Any}()
         nodal_data[node_id]["index"] = n
         nodal_data[node_id]["demand"] = [get_demand_data(demand, node_id, hour) for hour in 1:8760]
@@ -144,21 +145,21 @@ function construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, sce
     
             if g == "Solar PV" 
                 pv_series = pv[pv[!, "area"] .== node_id, climate_year]
-                if !any(pv_series .=== missing) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
+                if !any(pv_series .=== missing) && !isempty(pv_series) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
                     nodal_data[node_id]["generation"][g]["timeseries"] =  pv_series .* nodal_data[node_id]["generation"][g]["capacity"]
                 else
                     nodal_data[node_id]["generation"][g]["timeseries"] = zeros(1, 8760)
                 end
             elseif g == "Onshore Wind"
                 wind_series = wind_onshore[wind_onshore[!, "area"] .== node_id, climate_year]
-                if  !any(wind_series .=== missing) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
+                if  !any(wind_series .=== missing) && !isempty(wind_series) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
                     nodal_data[node_id]["generation"][g]["timeseries"] =  wind_series .* nodal_data[node_id]["generation"][g]["capacity"]
                 else
                     nodal_data[node_id]["generation"][g]["timeseries"] = zeros(1, 8760)
                 end
             elseif g == "Offshore Wind"
                 wind_series =  wind_offshore[wind_offshore[!, "area"] .== node_id, climate_year]
-                if  !any(wind_series .=== missing) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
+                if  !any(wind_series .=== missing) && !isempty(wind_series) && !isempty(nodal_data[node_id]["generation"][g]["capacity"])
                     nodal_data[node_id]["generation"][g]["timeseries"] = wind_series .* nodal_data[node_id]["generation"][g]["capacity"]
                 else
                     nodal_data[node_id]["generation"][g]["timeseries"] = zeros(1, 8760)
@@ -206,7 +207,6 @@ function prepare_hourly_data!(data, nodal_data, hour)
         elseif gen["type"] == "Onshore Wind"
             gen["pmax"] = nodal_data[node]["generation"]["Onshore Wind"]["timeseries"][hour] / data["baseMVA"]
         elseif gen["type"] == "Offshore Wind"
-            println(node)
             gen["pmax"] = nodal_data[node]["generation"]["Offshore Wind"]["timeseries"][hour] / data["baseMVA"]
         elseif gen["type"] == "ENS"
             gen["pmax"] = nodal_data[node]["demand"][hour] / data["baseMVA"]
