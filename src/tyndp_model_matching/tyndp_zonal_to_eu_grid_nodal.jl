@@ -8,6 +8,7 @@
 function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false)
     for (g, gen) in grid_data["gen"]
         zone = gen["zone"]
+        print(zone)
 
         # Check if generator type exists in input data
         if haskey(gen, "type")
@@ -25,7 +26,7 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
         end
         for tyndp_zone in tyndp_zones
             # obtain 
-            zonal_capacity = get_generation_capacity(tyndp_capacity, scenario, type, climate_year, tyndp_zone)
+            zonal_capacity = get_generation_capacity_2024(tyndp_capacity, type, tyndp_zone)
             if !isempty(zonal_capacity)
                 zonal_tyndp_capacity =  zonal_tyndp_capacity + zonal_capacity[1]
             end
@@ -103,6 +104,8 @@ function map_zones()
     zone_mapping["SK"] =  ["SK00"]
     zone_mapping["UK"] = ["UK00"]
     zone_mapping["NI"] = ["UKNI"]
+    zone_mapping["IT-SA"] = ["ITSA"]
+
   # TODO: Check these zones
   "CY00"
   "EE00"
@@ -209,6 +212,60 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     end
     return grid_data
 end
+
+function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_data)
+    number_of_hours = hour_end - hour_start + 1
+    mp_grid_data = InfrastructureModels.replicate(grid_data_orig, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
+
+    for (n, network) in mp_grid_data["nw"]
+        hour = hour_start + parse(Int, n) - 1 # to make sure that the correct hour is chosen if start_hour ≠ 1
+        for (l, load) in network["load"]
+            if haskey(load, "country_name")
+                zone = load["country_name"]
+            else
+                zone = load["zone"]
+            end
+            if haskey(timeseries_data["demand"], zone)
+                ratio = (timeseries_data["max_demand"][zone] / grid_data_orig["baseMVA"]) / load["country_peak_load"]
+                if zone == "NO1" || zone == "NO2" # comes from the weird tyndp data where the demand for the NO zones is somewhat aggregated!!!!!
+                    ratio = ratio / 2
+                end
+                load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
+            end
+        end
+        for (g, gen) in network["gen"]
+            zone = gen["zone"]
+            if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
+                gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
+                gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+            elseif gen["type_tyndp"] == "Offshore Wind" && haskey(timeseries_data["wind_offshore"], zone)
+                gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+                gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
+                gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+                gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            end
+        end
+        for (b, border) in network["borders"]
+            flow = timeseries_data["xb_flows"][border["name"]]["flow"][1, hour]
+            if abs(flow) > border["border_cap"]
+                border["flow"] = sign(flow) * border["border_cap"] * 0.95  # to avoid numerical infeasibility & compensate for possible HVDC losses
+            else
+                border["flow"] = flow
+            end
+        end
+    end
+    return mp_grid_data
+end
+
+
+function build_mn_data(file_name)
+    mp_data = PowerModels.parse_file(file_name)
+   
+    PowerModelsACDC.process_additional_data!(mp_data1; tnep = true)
+    return mp_data1
+end
+
 
 function build_uc_data(data, hour_ids, timeseries_data; contingencies = false, merge_zones = Dict{String, Any}())
     data_copy = deepcopy(data)
@@ -351,32 +408,79 @@ function merge_zones!(data; merge_zones = Dict())
 end
 
 
+# function get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)
+#     zone = zone_grid["zones"][1]
+#     borders = Dict{String, Any}()
+#     for (b, border) in zone_grid["borders"]
+#         borders[border["name"]] = Dict{String, Any}("flow" => zeros(1, length(zonal_result)))
+#         if haskey(zone_mapping, border["name"])
+#             tyndp_zone_fr = zone_mapping[zone][1]
+#             tyndp_zone_to = zone_mapping[border["name"]][1]
+        
+#             int_name_fr = join([tyndp_zone_fr,"-",tyndp_zone_to])
+#             int_name_to = join([tyndp_zone_to,"-",tyndp_zone_fr])
+#             flow = 0
+#             for (r, res) in zonal_result
+#                 for (b, branch) in zonal_input["branch"]
+#                     if branch["name"] == int_name_fr
+#                         flow = res["solution"]["branch"][b]["pf"]
+#                     elseif branch["name"] == int_name_to
+#                         flow = res["solution"]["branch"][b]["pt"]
+#                     end
+#                 end
+#                 borders[border["name"]]["flow"][1, parse(Int, r)] = flow
+#             end   
+#         end
+#      end
+#      return borders
+# end
+
 function get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)
-    zone = zone_grid["zones"][1]
     borders = Dict{String, Any}()
+    a= 0
     for (b, border) in zone_grid["borders"]
+        
         borders[border["name"]] = Dict{String, Any}("flow" => zeros(1, length(zonal_result)))
         if haskey(zone_mapping, border["name"])
-            tyndp_zone_fr = zone_mapping[zone][1]
-            tyndp_zone_to = zone_mapping[border["name"]][1]
-        
-            int_name_fr = join([tyndp_zone_fr,"-",tyndp_zone_to])
-            int_name_to = join([tyndp_zone_to,"-",tyndp_zone_fr])
-            flow = 0
-            for (r, res) in zonal_result
-                for (b, branch) in zonal_input["branch"]
-                    if branch["name"] == int_name_fr
-                        flow = res["solution"]["branch"][b]["pf"]
-                    elseif branch["name"] == int_name_to
-                        flow = res["solution"]["branch"][b]["pt"]
+
+            for zone in zone_grid["zones"]
+                tyndp_zone_fr = zone_mapping[zone][1]
+                tyndp_zone_to = zone_mapping[border["name"]][1]
+
+                    
+                int_name_fr = join([tyndp_zone_fr,"-",tyndp_zone_to])
+                int_name_to = join([tyndp_zone_to,"-",tyndp_zone_fr])
+                print(int_name_fr)
+                print("\n")
+                
+                flow = 0
+                for (r, res) in zonal_result
+                    for (b, branch) in zonal_input["branch"]
+                        if branch["name"] == int_name_fr
+                            flow = res["solution"]["branch"][b]["pf"]
+                            a +=1
+                            
+                        elseif branch["name"] == int_name_to
+                            flow = res["solution"]["branch"][b]["pt"]
+                            a +=1
+                            
+                        end
+                    
+                    
+                    
                     end
-                end
-                borders[border["name"]]["flow"][1, parse(Int, r)] = flow
-            end   
+
+                    if sum(flow) != 0
+                        borders[border["name"]]["flow"][1, parse(Int, r)] = flow
+                    end
+                    
+                end   
+            end
         end
-     end
-     return borders
+    end
+    return borders
 end
+
 
 function get_demand_reponse!(zone_grid, zonal_input, zone_mapping, timeseries_data; cost = 140)
     zone = zone_grid["zones"][1]
