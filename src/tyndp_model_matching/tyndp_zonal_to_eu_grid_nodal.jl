@@ -5,7 +5,7 @@
 # climate_year ::String - Climate year e.g. "2007"
 # zone_mapping ::Dict{String, Any} - Dictionary containing the mapping of zone names between both models
 # ns_hub_cap ::Float64 - Capacity of the North Sea energy hub as optional keyword argument. Default value coming from the grid model is 10 GW.
-function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false)
+function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false, tyndp = "2020")
     for (g, gen) in grid_data["gen"]
         zone = gen["zone"]
 
@@ -25,7 +25,7 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
         end
         for tyndp_zone in tyndp_zones
             # obtain 
-            zonal_capacity = get_generation_capacity(tyndp_capacity, scenario, type, climate_year, tyndp_zone)
+            zonal_capacity = get_generation_capacity(tyndp_capacity, scenario, type, climate_year, tyndp_zone, tyndp = tyndp)
             if !isempty(zonal_capacity)
                 zonal_tyndp_capacity =  zonal_tyndp_capacity + zonal_capacity[1]
             end
@@ -208,6 +208,60 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         end
     end
     return grid_data
+end
+
+
+function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_data)
+    number_of_hours = hour_end - hour_start + 1
+    mp_grid_data = InfrastructureModels.replicate(grid_data_orig, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
+
+    for (n, network) in mp_grid_data["nw"]
+        hour = hour_start + parse(Int, n) - 1 # to make sure that the correct hour is chosen if start_hour ≠ 1
+        for (l, load) in network["load"]
+            if haskey(load, "country_name")
+                zone = load["country_name"]
+            else
+                zone = load["zone"]
+            end
+            if haskey(timeseries_data["demand"], zone)
+                ratio = (timeseries_data["max_demand"][zone] / grid_data_orig["baseMVA"]) / load["country_peak_load"]
+                if zone == "NO1" || zone == "NO2" # comes from the weird tyndp data where the demand for the NO zones is somewhat aggregated!!!!!
+                    ratio = ratio / 2
+                end
+                load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
+            end
+        end
+        for (g, gen) in network["gen"]
+            zone = gen["zone"]
+            if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
+                gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
+                gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+            elseif gen["type_tyndp"] == "Offshore Wind" && haskey(timeseries_data["wind_offshore"], zone)
+                gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+                gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
+                gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+                gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            end
+        end
+        for (b, border) in network["borders"]
+            flow = timeseries_data["xb_flows"][border["name"]]["flow"][1, hour]
+            if abs(flow) > border["border_cap"]
+                border["flow"] = sign(flow) * border["border_cap"] * 0.95  # to avoid numerical infeasibility & compensate for possible HVDC losses
+            else
+                border["flow"] = flow
+            end
+        end
+    end
+    return mp_grid_data
+end
+
+
+function build_mn_data(file_name)
+    mp_data = PowerModels.parse_file(file_name)
+   
+    PowerModelsACDC.process_additional_data!(mp_data1; tnep = true)
+    return mp_data1
 end
 
 function build_uc_data(data, hour_ids, timeseries_data; contingencies = false, merge_zones = Dict{String, Any}())
