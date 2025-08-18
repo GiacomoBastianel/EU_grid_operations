@@ -5,7 +5,6 @@ using PowerModelsACDC; const _PMACDC = PowerModelsACDC
 using Gurobi
 using JSON
 using Feather
-import CbaOPF
 using CSV
 using DataFrames
 
@@ -52,8 +51,8 @@ for i in 1:number_of_hours
     EU_grid_hour = deepcopy(EU_grid_adjusted)
     results["$i"] = Dict{String,Any}()
     EU_grid_hour = include_RES_and_load(EU_grid,EU_grid_hour,RES_time_series_adjusted,load_zones,i)
-    s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
-    results["$i"] = deepcopy(CbaOPF.solve_cbaopf(EU_grid_hour, DCPPowerModel, Gurobi.Optimizer; setting = s)) 
+    s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false, "objective_components" => ["gen", "demand"])
+    results["$i"] = deepcopy(_PMACDC.solve_acdcopf(EU_grid_hour, DCPPowerModel, Gurobi.Optimizer; setting = s)) 
 end
 
 
@@ -79,16 +78,6 @@ maximum(curt)
 
 
 
-#=
-EU_grid["pst"] = Dict{String, Any}()
-for (l, load) in EU_grid["load"]
-    load["pred_rel_max"]  = 0
-    load["cost_red"] = 100 * EU_grid["baseMVA"] 
-    load["cost_curt"]  = 1000 * EU_grid["baseMVA"] 
-    load["flex"] = 1
-end
-s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
-result_cba = CbaOPF.solve_cbaopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s) 
 
 
 #### Plot some results:

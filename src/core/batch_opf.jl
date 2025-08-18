@@ -4,7 +4,7 @@ function batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, sol
     result = Dict{String, Any}(["$hour" => Dict{String, Any}() for hour in hour_start_idx : hour_end_idx])
     for hour_idx in hour_start_idx : hour_end_idx
         hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, timeseries_data) # write hourly values into the grid data
-        result["$hour_idx"] = CbaOPF.solve_cbaopf(zone_grid_hourly, _PM.DCPPowerModel, solver; setting = setting) # solve the OPF 
+        result["$hour_idx"] = _PMACDC.solve_acdcopf(zone_grid_hourly, _PM.DCPPowerModel, solver; setting = setting) # solve the OPF 
     end 
     
     return result
@@ -29,7 +29,7 @@ function run_batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data,
     
     for hour_idx in hour_start_idx : hour_end_idx
         hourly_grid_data!(zone_grid_hourly, zone_grid, hour_idx, timeseries_data) # write hourly values into the grid data
-        result["$hour_idx"] = CbaOPF.solve_cbaopf(zone_grid_hourly, _PM.DCPPowerModel, solver; setting = setting) # solve the OPF 
+        result["$hour_idx"] = _PMACDC.solve_acdcopf(zone_grid_hourly, _PM.DCPPowerModel, solver; setting = setting) # solve the OPF 
     end
 
     opf_file_name = join([file_name, "_opf_",hour_start_idx,"_to_",hour_end_idx,".json"])

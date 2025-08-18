@@ -13,7 +13,6 @@ import Memento
 import JuMP
 import Gurobi  # needs startvalues for all variables!
 import JSON
-import CbaOPF
 import DataFrames; const _DF = DataFrames
 import CSV
 import Feather
@@ -76,7 +75,7 @@ hour_end_idx =  8760
 plot_filename = joinpath("results", join(["grid_input_",use_case,".pdf"]))
 _EUGO.plot_grid(zone_grid, plot_filename)
 
-s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
+s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "objective_components" => ["gen", "demand"])
 # This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
 # result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
 # obj = [result["$(i)"]["termination_status"] for i in 1:8760]; countmap(obj) # chcek objective

@@ -10,7 +10,6 @@ using EU_grid_operations; const _EUGO = EU_grid_operations
 using Plots
 import JuMP
 import JSON
-import CbaOPF
 import DataFrames; const _DF = DataFrames
 import CSV
 import Feather

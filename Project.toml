@@ -5,7 +5,6 @@ version = "0.1.0"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-CbaOPF = "b09c5755-86bc-4b69-9fb0-eea9d409a5ca"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
@@ -27,7 +26,6 @@ XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [compat]
 CSV = "~0.10"
-CbaOPF = "0.3.0"
 Clustering = "~0.15"
 ColorSchemes = "3.21.0"
 DataFrames = "~1.6"

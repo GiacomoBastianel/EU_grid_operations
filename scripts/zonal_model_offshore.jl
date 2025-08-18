@@ -19,7 +19,6 @@ import Feather
 import PowerModels; const _PM = PowerModels
 import InfrastructureModels; const _IM = InfrastructureModels
 import JSON
-import CbaOPF
 import Plots
 using EU_grid_operations; const _EUGO = EU_grid_operations
 gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer)

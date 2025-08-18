@@ -4,7 +4,6 @@ using PowerModelsACDC; const _PMACDC = PowerModelsACDC
 using Gurobi
 using EU_grid_operations; const _EUGO = EU_grid_operations
 using JSON
-import CbaOPF
 using Plots
 
 
@@ -40,10 +39,10 @@ for (l, load) in EU_grid["load"]
 end
 
 # Update setttings
-s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false)
+s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => false, "objective_components" => ["gen", "demand"])
 
 # solve CbaOPF
-result_cba = CbaOPF.solve_cbaopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s) 
+result_cba = _PMACDC.solve_acdcopf(EU_grid, DCPPowerModel, Gurobi.Optimizer; setting = s) 
 
 
 #### Plot some results:

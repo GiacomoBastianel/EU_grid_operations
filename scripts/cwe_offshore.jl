@@ -12,7 +12,6 @@ import Memento
 import JuMP
 import Gurobi  # needs startvalues for all variables!
 import JSON
-import CbaOPF
 import DataFrames; const _DF = DataFrames
 import CSV
 import Feather
@@ -99,7 +98,7 @@ open(zonal_result_file_name) do f
 end
 
 # Start runnning hourly OPF calculations
-s = Dict("output" => Dict("branch_flows" => true, "duals" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
+s = Dict("output" => Dict("branch_flows" => true, "duals" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "objective_components" => ["gen", "demand"])
 # This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
 _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 

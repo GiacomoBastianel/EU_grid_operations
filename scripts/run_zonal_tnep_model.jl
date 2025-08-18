@@ -19,7 +19,6 @@ import Feather
 import PowerModels; const _PM = PowerModels
 import InfrastructureModels; const _IM = InfrastructureModels
 import JSON
-import CbaOPF
 import Plots
 using EU_grid_operations; const _EUGO = EU_grid_operations
 gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer)
@@ -92,7 +91,7 @@ print("####### PREPARING DATA      ##########", "\n")
 
 print("######################################", "\n")
 print("####### STARTING OPTIMISATION#### ####", "\n")
-@time result = CbaOPF.solve_zonal_tnep(mn_input_data, _PM.NFAPowerModel, gurobi; multinetwork = true) 
+@time result = CbaOPF.solve_zonal_tnep(mn_input_data, _PM.NFAPowerModel, gurobi; multinetwork = true)  ### Needs to be implementen in PMACDC.jl
 
 
 cap  = zeros(1, maximum(parse.(Int, collect(keys(input_data["branch"])))))

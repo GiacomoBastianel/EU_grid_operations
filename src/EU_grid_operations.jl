@@ -9,7 +9,6 @@ import PowerModels
 const _PM = PowerModels
 import InfrastructureModels
 const _IM = InfrastructureModels
-import CbaOPF
 import XLSX
 import JSON
 import Feather

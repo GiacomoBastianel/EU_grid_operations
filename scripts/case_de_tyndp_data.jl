@@ -14,7 +14,6 @@ import Memento
 import JuMP
 import Gurobi  # needs startvalues for all variables!
 import JSON
-import CbaOPF
 import DataFrames; const _DF = DataFrames
 import CSV
 import Feather
@@ -100,7 +99,7 @@ zone_grid_un = _EUGO.add_hvdc_links(zone_grid, links)
 
 ### Carry out OPF
 # Start runnning hourly OPF calculations
- s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true)
+ s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "objective_components" => ["gen", "demand"])
 
 # without investment 
 batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
@@ -319,7 +318,6 @@ print("Total cost with investment = ", result_con_inv["total_cost"] / 1e6 * hour
 # # # zone_grid_hourly["borders"]["7"]["slack"] = 0.06
 # # zone_grid_hourly["borders"]["8"]["slack"] = 0.01
 # # zone_grid_hourly["borders"]["13"]["slack"] = 0.01
-# # res = CbaOPF.solve_CbaOPF(zone_grid_hourly, DCPPowerModel, Gurobi.Optimizer; setting = s) 
 
 # # ###### Validation ###########
 

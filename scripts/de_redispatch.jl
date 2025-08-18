@@ -14,7 +14,7 @@ import Memento
 import JuMP
 import Gurobi  # needs startvalues for all variables!
 import JSON
-import CbaOPF
+import _PMACDC
 import DataFrames; const _DF = DataFrames
 import CSV
 import Feather
@@ -126,7 +126,7 @@ for (hour_idx, hour) in res_cl
 
         ##### RUN RD_OPF without control
         s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "fix_converter_setpoints" => true)
-        result_crd = CbaOPF.solve_rdopf(grid_data_rd, _PM.DCPPowerModel, gurobi; setting = s) 
+        result_crd = _PMACDC.solve_rdopf(grid_data_rd, _PM.DCPPowerModel, gurobi; setting = s) 
 
         if isnan(result_crd["objective"])
             push!(rd_cost_no_hvdc_cont, 0)
@@ -136,7 +136,7 @@ for (hour_idx, hour) in res_cl
 
         ##### RUN RD_OPF with control
         s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "fix_converter_setpoints" => false)
-        result_crd = CbaOPF.solve_rdopf(grid_data_rd, _PM.DCPPowerModel, gurobi; setting = s) 
+        result_crd = _PMACDC.solve_rdopf(grid_data_rd, _PM.DCPPowerModel, gurobi; setting = s) 
 
         if isnan(result_crd["objective"])
             push!(rd_cost_hvdc_cont, 0)
