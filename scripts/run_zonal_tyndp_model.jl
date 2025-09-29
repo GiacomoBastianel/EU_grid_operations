@@ -40,14 +40,15 @@ solver = JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 #  -  Number of hours: 1 - 8760
 # Fetch data: true/false, to parse input data (takes ~ 1 min.)
 
-# A sample set for TYNDP 2024
+## A sample set for TYNDP 2024
 tyndp_version = "2024"
 fetch_data = true
 number_of_hours = 8760
-scenario = "DE"
+scenario = "GA"
 year = "2050"
 climate_year = "2009"
-# A sample set for TYNDP 2020
+
+## A sample set for TYNDP 2020
 # tyndp_version = "2020"
 # fetch_data = true
 # number_of_hours = 8760
@@ -63,7 +64,7 @@ if fetch_data == true
 end
 
 # Construct input data dictionary in PowerModels style 
-input_data, nodal_data = _EUGO.construct_data_dictionary(tyndp_version, ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
+input_data, nodal_data = _EUGO.construct_data_dictionary(tyndp_version, ntcs, arcs, capacity, nodes, demand, scenario, year, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions)
 
 # Make copy of input data dictionary as RES and demand data updated for each hour
 input_data_raw = deepcopy(input_data)

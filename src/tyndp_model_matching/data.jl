@@ -6,17 +6,17 @@
 # hourly RES generation and demand values
 #######################################
 
-function construct_data_dictionary(tyndp_version, ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; kwargs...)
+function construct_data_dictionary(tyndp_version, ntcs, arcs, capacity, nodes, demand, scenario, year, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; kwargs...)
     if tyndp_version == "2024"
         return construct_data_dictionary_2024(ntcs, arcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; kwargs...)
     elseif tyndp_version == "2020"
-        return construct_data_dictionary_2020(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; kwargs...)
+        return construct_data_dictionary_2020(ntcs, capacity, nodes, demand, scenario, year, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; kwargs...)
     else    
         error("Invalid TYNDP version")
     end
 end
 
-function construct_data_dictionary_2020(ntcs, capacity, nodes, demand, scenario, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; co2_cost = 0.0)
+function construct_data_dictionary_2020(ntcs, capacity, nodes, demand, scenario, year, climate_year, gen_types, pv, wind_onshore, wind_offshore, gen_costs, emission_factor, inertia_constants, node_positions; co2_cost = 0.0)
 
     data = Dict{String, Any}()
     nodal_data = Dict{String, Any}()
@@ -38,6 +38,8 @@ function construct_data_dictionary_2020(ntcs, capacity, nodes, demand, scenario,
     global g_idx = 1
     global s_idx = 1
     
+    scenario = scenario * year
+
     print("######################################", "\n")
     print("PROCESSING ZONAL GENERATION AND DEMAND", "\n")
     print("######################################", "\n")

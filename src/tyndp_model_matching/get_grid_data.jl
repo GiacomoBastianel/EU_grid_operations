@@ -314,7 +314,7 @@ function get_grid_data_2024(scenario, year, climate_year)
     # data source: https://2020.entsos-tyndp-scenarios.eu/wp-content/uploads/2020/06/TYNDP-2020-Scenario-Datafile.xlsx.zip
     file_nodes = joinpath(BASE_DIR,"data_sources", "TYNDP2024","LIST OF NODES_2024.xlsx")
     # data source for all demand time series: https://tyndp.entsoe.eu/maps-data 
-    file_demand = joinpath(BASE_DIR,"data_sources", "TYNDP2024","Demand_Profiles","$(scenario)", "$(year)","Demand_$(scenario)$(year)_$(climate_year).csv")
+    file_demand = joinpath(BASE_DIR,"data_sources", "TYNDP2024","Demand_Profiles","$(scenario)", "$(year)","Total_demand_$(scenario)$(year)_$(climate_year).csv")
     file_capacity = joinpath(BASE_DIR,"data_sources", "TYNDP2024","PEMMDB2","$(scenario)", "$(year)","Installed_generation_capacity_$(scenario)$(year)_MW.csv")
 
     # Create dataframes from CSV/XLS files

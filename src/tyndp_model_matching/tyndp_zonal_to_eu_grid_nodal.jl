@@ -36,6 +36,9 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
             for (z, zone_) in grid_data["zonal_generation_capacity"]
                 if zone_["zone"] == zone
                     scaling_factor = max(1, (zonal_tyndp_capacity / grid_data["baseMVA"] / zone_[type]) )
+                    if type == "onshore_wind"
+                        println(zone, scaling_factor)
+                    end
                     if !exclude_offshore_wind
                         if gen["type"] != "Offshore Wind"
                             gen["pmax"] = gen["pmax"] * scaling_factor
@@ -187,7 +190,11 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         end
     end
     for (g, gen) in grid_data["gen"]
-        zone = gen["zone"]
+        if haskey(gen, "country")
+            zone = gen["country"]
+        else
+            zone = gen["zone"]
+        end
         if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
             gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
             gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
