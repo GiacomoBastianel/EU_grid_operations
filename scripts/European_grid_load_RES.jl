@@ -89,7 +89,6 @@ print("Total curtailed load: ", total_load_curtailment, " MW")
 plot([load["pcurt"] for (l, load) in result_cba["solution"]["load"]] * EU_grid["baseMVA"])
 xlabel!("Load ID")
 ylabel!("Pcurt in MW")
-=#
 
 
 #### Plot some results:

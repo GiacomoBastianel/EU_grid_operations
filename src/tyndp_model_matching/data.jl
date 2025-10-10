@@ -291,7 +291,7 @@ function add_gen!(data, g_idx, g, gen_costs, emission_factor, inertia_constants,
     return data
 end
 # nodal
-function add_gen!(input_data, zone, cost, node, pmax, type)
+function add_gen!(input_data, zone, cost, node, pmax, type; region::String = "")
     new_gen_id = maximum([gen["index"] for (g, gen) in input_data["gen"]]) + 1
     input_data["gen"]["$new_gen_id"] = Dict{String, Any}()
     input_data["gen"]["$new_gen_id"]["zone"]          = zone
@@ -313,6 +313,9 @@ function add_gen!(input_data, zone, cost, node, pmax, type)
     input_data["gen"]["$new_gen_id"]["type"]          = type
     input_data["gen"]["$new_gen_id"]["pmin"]          = 0.0
     input_data["gen"]["$new_gen_id"]["ncost"]         = 2
+    if !isempty(region)
+        input_data["gen"]["$new_gen_id"]["region"] = region
+    end
 end
 
 function add_storage!(data, s_idx, g, n, nodal_data, node_id)

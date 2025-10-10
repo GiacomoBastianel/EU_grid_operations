@@ -221,7 +221,7 @@ function add_border!(zone_data, borders, grid_data, border_bus)
     return zone_data
 end
 
-function add_border_gen!(zone_data, border_bus, border_zone)
+function add_border_gen!(zone_data, border_bus, border_zone; use_regions = false)
 
     number_of_gens = maximum([gen["index"] for (g, gen) in zone_data["gen"]])
     idx = number_of_gens + 1
@@ -243,6 +243,9 @@ function add_border_gen!(zone_data, border_bus, border_zone)
     zone_data["gen"]["$idx"]["gen_status"] = 1
     zone_data["gen"]["$idx"]["vg"] = 1.0
     zone_data["gen"]["$idx"]["source_id"] = []
+    if use_regions == true
+        zone_data["gen"]["$idx"]["region"] = border_zone
+    end
     push!(zone_data["gen"]["$idx"]["source_id"],"gen")
     push!(zone_data["gen"]["$idx"]["source_id"], idx)
 
@@ -271,28 +274,3 @@ function find_xb_zone(grid_data, xb_bus, zone)
     
     return xb_zone
 end
-
-# f_bus = branch["f_bus"]
-# t_bus = branch["t_bus"]
-# print((f_bus, t_bus), "\n")
-# border_buses = [grid_data["bus"]["$f_bus"]["zone"]  !== zones, grid_data["bus"]["$t_bus"]["zone"]  !== zones]
-# if !isempty(border_buses)
-#     if findall(border_buses) == 1
-#         border_bus = f_bus   
-#     else
-#         border_bus = t_bus
-#     end
-#     border_zone = grid_data["bus"]["$border_bus"]["zone"]
-#     if !any(border_zone .== borders)
-#         add_border!(zone_data, borders, grid_data, border_bus)
-#     end
-#     for (bo, border) in zone_data["borders"]
-#         if border["name"] == border_zone
-#             number_of_lines = length(border["xb_lines"])
-#             l_idx = number_of_lines + 1
-#             border["xb_lines"]["$l_idx"] = branch
-#         end
-#     end
-#     zone_data["bus"]["$border_bus"] = grid_data["bus"]["$border_bus"]
-#     add_border_gen!(zone_data, border_bus, border_zone)
-# end

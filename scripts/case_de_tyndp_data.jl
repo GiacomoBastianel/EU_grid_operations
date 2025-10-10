@@ -24,7 +24,9 @@ using StatsBase
 import StatsPlots
 
 ######### DEFINE INPUT PARAMETERS
-scenario = "GA2040"
+scenario = "GA"
+year = "2040"
+tyndp_version = "2020"
 climate_year = "2007"
 load_data = true
 use_case = "de_hvdc_backbone"
@@ -49,8 +51,8 @@ _EUGO.add_load_and_pst_properties!(EU_grid)
 
 #### LOAD TYNDP SCENARIO DATA ##########
 if load_data == true
-    zonal_result, zonal_input, scenario_data = _EUGO.load_results(scenario, climate_year) # Import zonal results
-    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(scenario) # import zonal input (mainly used for cost data)
+    zonal_result, zonal_input, scenario_data = _EUGO.load_results(tyndp_version, scenario, year, climate_year) # Import zonal results
+    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(tyndp_version, scenario, year, climate_year) # import zonal input (mainly used for cost data)
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
 end
 print("ALL FILES LOADED", "\n")
@@ -102,9 +104,9 @@ zone_grid_un = _EUGO.add_hvdc_links(zone_grid, links)
  s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true, "objective_components" => ["gen", "demand"])
 
 # without investment 
-batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
+_EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 # with investment 
-batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_inv)
+_EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid_un, timeseries_data, gurobi, s, batch_size, output_file_name_inv)
 
 
 ## Load and process results

@@ -14,7 +14,6 @@ import Memento
 import JuMP
 import Gurobi  # needs startvalues for all variables!
 import JSON
-import _PMACDC
 import DataFrames; const _DF = DataFrames
 import CSV
 import Feather
@@ -25,8 +24,10 @@ using StatsBase
 import StatsPlots
 
 ######### DEFINE INPUT PARAMETERS
-scenario = "GA2030"
+scenario = "GA"
+tyndp_version = "2020"
 climate_year = "2007"
+year = "2040"
 load_data = true
 use_case = "de_hvdc_sol"
 only_hvdc_case = false
@@ -49,8 +50,8 @@ _EUGO.add_load_and_pst_properties!(EU_grid)
 
 #### LOAD TYNDP SCENARIO DATA ##########
 if load_data == true
-    zonal_result, zonal_input, scenario_data = _EUGO.load_results(scenario, climate_year) # Import zonal results
-    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(scenario) # import zonal input (mainly used for cost data)
+    zonal_result, zonal_input, scenario_data = _EUGO.load_results(tyndp_version, scenario, year, climate_year) # Import zonal results
+    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(tyndp_version, scenario, year, climate_year) # import zonal input (mainly used for cost data)
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
 end
 print("ALL FILES LOADED", "\n")

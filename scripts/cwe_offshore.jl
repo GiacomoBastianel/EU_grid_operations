@@ -23,13 +23,16 @@ import StatsPlots
 using ColorSchemes
 
 ######### DEFINE INPUT PARAMETERS
-scenario = "GA2040"
+scenario = "GA"
+year = "2040"
+tyndp_version = "2020"
 climate_year = "1982"
 load_data = true
 use_case = "nsow"
 hour_start_idx = 1 
 hour_end_idx =  48
 batch_size = 48
+isolated_zones = ["UK","BE","DE","FR","NL","DK1","DK2"]
 ############ LOAD EU grid data
 file = "data_sources/European_grid_no_nseh.json"
 output_file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year, ".json"]))
@@ -40,8 +43,8 @@ _EUGO.add_load_and_pst_properties!(EU_grid)
 
 #### LOAD TYNDP SCENARIO DATA ##########
 if load_data == true
-    zonal_result, zonal_input, scenario_data = _EUGO.load_results(scenario, climate_year; file_name = "NSOW_zonal") # Import zonal results
-    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(scenario) # import zonal input (mainly used for cost data)
+    zonal_result, zonal_input, scenario_data = _EUGO.load_results(tyndp_version, scenario, year, climate_year;  file_name = "NSOW_zonal") # Import zonal results
+    ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(tyndp_version, scenario, year, climate_year) # import zonal input (mainly used for cost data)
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
 end
 print("ALL FILES LOADED", "\n")
@@ -57,12 +60,12 @@ _EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_ma
 _EUGO.fix_data!(EU_grid)
 
 # Isolate zone: input is vector of strings
-zone_grid = _EUGO.isolate_zones(EU_grid, ["UK","BE","DE","FR","NL","DK1","DK2"]; border_slack = 0.01)
+zone_grid = _EUGO.isolate_zones(EU_grid, isolated_zones; border_slack = 0.01)
 
 # create RES time series based on the TYNDP model for 
 # (1) all zones, e.g.  create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping) 
 # (2) a specified zone, e.g. create_res_time_series(wind_onshore, wind_offshore, pv, zone_mapping; zone = "DE")
-timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping)
+timeseries_data = _EUGO.create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping;  zones = isolated_zones)
 
 # Determine hourly cross-border flows and add them to time series data
 push!(timeseries_data, "xb_flows" => _EUGO.get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)) 
@@ -87,14 +90,6 @@ for (b, branch) in zone_grid["branch"]
             branch["rate_c"] = 15
         end
     end
-end
-
-# Load zonal result
-zonal_result_file_name = joinpath("results", join(["NSOW_zonal_",scenario, "_", climate_year, ".json"]))
-zonal_result = Dict{String, Any}()
-open(zonal_result_file_name) do f
-    dicttxt = read(f,String)  # file information to string
-    global zonal_result = JSON.parse(dicttxt)  # parse and transform data
 end
 
 # Start runnning hourly OPF calculations
