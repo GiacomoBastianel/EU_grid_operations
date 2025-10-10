@@ -24,8 +24,8 @@ using ColorSchemes
 #####################################################################
 #### Printing average zonal prices and average zonal costs
 #####################################################################
-scenario = "GA2030"
-climate_year = "2007"
+scenario = "DE2050"
+climate_year = "2009"
 zonal_result, zonal_input, scenario_data = _EUGO.load_results(scenario, climate_year)
 file_name_marg = joinpath("results", "plots", join([scenario,"_", climate_year, "_zonal_marginal_prices.pdf"]))
 file_name_avg = joinpath("results", "plots", join([scenario,"_", climate_year, "_zonal_average_costs.pdf"]))
@@ -39,15 +39,15 @@ _EUGO.plot_average_zonal_costs(zonal_result, zonal_input, file_name_avg; zones =
 #### Plotting average line loadings as colors using a color map, on a geographic map
 #####################################################################################
 # DEFINE INPUT PARAMETERS
-scenario = "GA2030"
-climate_year = "2007"
+scenario = "DE2050" #"GA2030"
+climate_year = "2009"#"2007"
 use_case = "de_hvdc_backbone"
 file_name = joinpath("results", join([use_case,"_",scenario,"_", climate_year,"_inv"]))
 hour_start = 1
 hour_end = 8760
 batch_size = 365
 load_data = true
-zone = "DE00"
+zone = "IT01"#"DE00"
 links = Dict("Suedostlink" => [] , "Suedostlink" => [], "Ultranet" => [])
 ############ LOAD EU grid data
 file = "./data_sources/European_grid_no_nseh.json"

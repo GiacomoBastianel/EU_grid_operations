@@ -28,6 +28,13 @@ function isolate_zones(grid_data, zones; border_slack = 0)
         end
     end
     for zone in zones
+        for (b, bus) in grid_data["busdc"]
+            if haskey(bus, "zone") && bus["zone"] == zone
+                zone_data["busdc"][b] = bus
+            end
+        end
+    end
+    for zone in zones
         # then find all XB nodes and assign them to the first zone of ones in the list
         for (br, branch) in grid_data["branch"]
             # Only interested in interconnectors
@@ -89,7 +96,10 @@ function isolate_zones(grid_data, zones; border_slack = 0)
             bus_dc = conv["busdc_i"]
             if (haskey(grid_data["bus"]["$bus_ac"], "zone") && grid_data["bus"]["$bus_ac"]["zone"]  == zone) 
                 zone_data["convdc"][c] = conv
-                zone_data["busdc"]["$bus_dc"] = grid_data["busdc"]["$bus_dc"]
+                if !haskey(zone_data["busdc"], string(bus_dc))
+                    zone_data["busdc"][string(bus_dc)] = grid_data["busdc"][string(bus_dc)]
+                end
+                #zone_data["busdc"]["$bus_dc"] = grid_data["busdc"]["$bus_dc"]
             end
         end
 
@@ -230,6 +240,7 @@ function add_border_gen!(zone_data, border_bus, border_zone)
     zone_data["gen"]["$idx"]["index"] = idx 
     zone_data["gen"]["$idx"]["country"] = border_zone
     zone_data["gen"]["$idx"]["zone"] = border_zone
+    zone_data["gen"]["$idx"]["region"] = border_zone
     zone_data["gen"]["$idx"]["gen_bus"] = border_bus 
     zone_data["gen"]["$idx"]["type"] = "XB_dummy"
     zone_data["gen"]["$idx"]["type_tyndp"] = "XB_dummy"
