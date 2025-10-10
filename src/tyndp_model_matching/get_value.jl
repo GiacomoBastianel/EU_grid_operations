@@ -23,7 +23,17 @@ end
 # type{String}: Generation type, e.g. "Solar PV"
 # climate_year{Int}: {1982, 1984, 2007} 
 # node{String}: zone name, e.g. "AL00"
-function get_generation_capacity(capacity, scenario, type, climate_year, node)
+
+
+function get_generation_capacity(capacity, scenario, type, climate_year, node; tyndp = "2020")
+    if tyndp == "2020"
+        get_generation_capacity_2020(capacity, scenario, type, climate_year, node)
+    elseif tyndp == "2024"
+        get_generation_capacity_2024(capacity, type, node)
+    end
+end
+
+function get_generation_capacity_2020(capacity, scenario, type, climate_year, node)
     if scenario == "DE2040"
         scenario = "DE2040 Update"
     end

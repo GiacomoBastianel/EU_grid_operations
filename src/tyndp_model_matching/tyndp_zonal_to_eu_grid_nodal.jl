@@ -5,14 +5,13 @@
 # climate_year ::String - Climate year e.g. "2007"
 # zone_mapping ::Dict{String, Any} - Dictionary containing the mapping of zone names between both models
 # ns_hub_cap ::Float64 - Capacity of the North Sea energy hub as optional keyword argument. Default value coming from the grid model is 10 GW.
-function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false)
+function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false, tyndp = "2020")
     for (g, gen) in grid_data["gen"]
         zone = gen["zone"]
-        print(zone)
 
         # Check if generator type exists in input data
-        if haskey(gen, "type_tyndp") #added Tyndp
-            type = gen["type_tyndp"] #added tyndp
+        if haskey(gen, "type")
+            type = gen["type"]
         else
             print(g, "\n")
         end
@@ -26,7 +25,7 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
         end
         for tyndp_zone in tyndp_zones
             # obtain 
-            zonal_capacity = get_generation_capacity_2024(tyndp_capacity, type, tyndp_zone)
+            zonal_capacity = get_generation_capacity(tyndp_capacity, scenario, type, climate_year, tyndp_zone, tyndp = tyndp)
             if !isempty(zonal_capacity)
                 zonal_tyndp_capacity =  zonal_tyndp_capacity + zonal_capacity[1]
             end
@@ -36,7 +35,10 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
         if zonal_tyndp_capacity !=0
             for (z, zone_) in grid_data["zonal_generation_capacity"]
                 if zone_["zone"] == zone
-                    scaling_factor = max(0, (zonal_tyndp_capacity / grid_data["baseMVA"] / zone_[type]) )
+                    scaling_factor = max(0.0, (zonal_tyndp_capacity / grid_data["baseMVA"] / zone_[type]) )
+                    if type == "onshore_wind"
+                        println(zone, scaling_factor)
+                    end
                     if !exclude_offshore_wind
                         if gen["type"] != "Offshore Wind"
                             gen["pmax"] = gen["pmax"] * scaling_factor
@@ -57,122 +59,8 @@ function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zo
     end 
 end
 
-# function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false)
-#     # track zone+type pairs for which we already added the "single" generator
-#     added_zone_type = Set{Tuple{String,String}}()
-
-#     for (g, gen) in grid_data["gen"]
-#         zone = gen["zone"]
-#         print(zone)
-
-#         # Check if generator type exists in input data
-#         if haskey(gen, "type")
-#             type = gen["type"]
-#         else
-#             print(g, "\n")
-#         end
-
-#         # Calculate zonal capacity: For LU there are three different zones coming from the TYNDP data
-#         zonal_tyndp_capacity = 0
-#         if haskey(zone_mapping, zone)
-#             tyndp_zones = zone_mapping[zone]
-#         else
-#             tyndp_zones = Dict{String, Any}()
-#         end
-#         for tyndp_zone in tyndp_zones
-#             # obtain 
-#             zonal_capacity = get_generation_capacity_2024(tyndp_capacity, type, tyndp_zone)
-#             if !isempty(zonal_capacity)
-#                 zonal_tyndp_capacity =  zonal_tyndp_capacity + zonal_capacity[1]
-#             end
-#         end
-
-#         # If the zonal capacity is different than zero, scale "pmax" based on the ratios of the zonal capacities
-#         if zonal_tyndp_capacity != 0
-#             for (z, zone_) in grid_data["zonal_generation_capacity"]
-#                 if zone_["zone"] == zone
-#                     # If the model-specific capacity for this technology is zero -> create single generator holding all zonal capacity
-#                     if haskey(zone_, type) && zone_[type] == 0
-#                         # Only add once per (zone,type)
-#                         if !( (zone, type) in added_zone_type )
-#                             # find a bus in this zone to attach the new generator (pick first match)
-#                             chosen_bus = nothing
-#                             if haskey(grid_data, "bus")
-#                                 for (b, bus) in grid_data["bus"]
-#                                     if haskey(bus, "zone") && bus["zone"] == zone
-#                                         # prefer explicit bus index if there
-#                                         if haskey(bus, "bus_i")
-#                                             chosen_bus = bus["bus_i"]
-#                                         else
-#                                             # fallback: try to parse key 'b' as Int
-#                                             try
-#                                                 chosen_bus = parse(Int, string(b))
-#                                             catch
-#                                                 chosen_bus = nothing
-#                                             end
-#                                         end
-#                                         break
-#                                     end
-#                                 end
-#                             end
-
-#                             # If chosen_bus found, add generator carrying entire zonal_tyndp_capacity (MW).
-#                             # add_gen! will convert pmax -> per-unit as in your original function.
-#                             if chosen_bus !== nothing
-#                                 # cost set to 0.0 (you can change if you want)
-#                                 add_gen!(grid_data, zone, 0.0, chosen_bus, zonal_tyndp_capacity, type)
-#                                 push!(added_zone_type, (zone, type))
-#                             else
-#                                 @warn "Could not find an AC bus in zone $zone to add generator for type $type. Skipping add_gen!"
-#                             end
-#                         end
-#                     else
-#                         # Normal behavior: scale existing generators
-#                         # (guarding haskey to avoid KeyError if zone_[type] missing)
-#                         if haskey(zone_, type) && zone_[type] != 0
-#                             scaling_factor = max(0, (zonal_tyndp_capacity / grid_data["baseMVA"] / zone_[type]) )
-#                             if !exclude_offshore_wind
-#                                 if gen["type"] != "Offshore Wind"
-#                                     gen["pmax"] = gen["pmax"] * scaling_factor
-#                                 end
-#                             else
-#                                 gen["pmax"] = gen["pmax"] * scaling_factor
-#                             end
-#                         else
-#                             # if zone_[type] missing, fallback: don't scale this generator (keeps original behavior minimal)
-#                         end
-#                     end
-#                 end
-#             end
-#         end
-
-#         # Check if a different capacity should be written into the offshore wind generator NSEH
-#         if !isnothing(ns_hub_cap)
-#             if zone == "NSEH"
-#                 gen["pmax"] = ns_hub_cap
-#             end
-#         end
-#     end 
-# end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # This function maps the zone names in the EU Grid model to the zone names of the TYNDP model
-function map_zones()
+function map_zones(;region_names = [])
     zone_mapping = Dict{String, Any}()
     zone_mapping["AL"] = ["AL00"]
     zone_mapping["AT"] = ["AT00"]
@@ -219,26 +107,7 @@ function map_zones()
     zone_mapping["UK"] = ["UK00"]
     zone_mapping["NI"] = ["UKNI"]
     zone_mapping["IT-SA"] = ["ITSA"]
-    zone_mapping["IT-1"] = ["IT-1"]
-    zone_mapping["IT-2"] = ["IT-2"]
-    zone_mapping["IT-3"] = ["IT-3"]
-    zone_mapping["IT-4"] = ["IT-4"]
-    zone_mapping["IT-5"] = ["IT-5"]
-    zone_mapping["IT-6"] = ["IT-6"]
-    zone_mapping["IT-7"] = ["IT-7"]
-    zone_mapping["IT-8"] = ["IT-8"]
-    zone_mapping["IT-9"] = ["IT-9"]
-    zone_mapping["IT-10"] = ["IT-10"]
-    zone_mapping["IT-11"] = ["IT-11"]
-    zone_mapping["IT-12"] = ["IT-12"]
-    zone_mapping["IT-13"] = ["IT-13"]
-    zone_mapping["IT-14"] = ["IT-14"]
-    zone_mapping["IT-15"] = ["IT-15"]
-    zone_mapping["IT-16"] = ["IT-16"]
-    zone_mapping["IT-17"] = ["IT-17"]
-    zone_mapping["IT-18"] = ["IT-18"]
-    zone_mapping["IT-19"] = ["IT-19"]
-    zone_mapping["IT-20"] = ["IT-20"]
+    map_zones_regions(zone_mapping, region_names)
 
   # TODO: Check these zones
   "CY00"
@@ -261,8 +130,34 @@ function map_zones()
   return zone_mapping
 end
 
+function map_zones_regions(zone_mapping, region_names)
+    for name in region_names
+        if name == "IT"
+            zone_mapping["IT-1"] = ["IT-1"]
+            zone_mapping["IT-2"] = ["IT-2"]
+            zone_mapping["IT-3"] = ["IT-3"]
+            zone_mapping["IT-4"] = ["IT-4"]
+            zone_mapping["IT-5"] = ["IT-5"]
+            zone_mapping["IT-6"] = ["IT-6"]
+            zone_mapping["IT-7"] = ["IT-7"]
+            zone_mapping["IT-8"] = ["IT-8"]
+            zone_mapping["IT-9"] = ["IT-9"]
+            zone_mapping["IT-10"] = ["IT-10"]
+            zone_mapping["IT-11"] = ["IT-11"]
+            zone_mapping["IT-12"] = ["IT-12"]
+            zone_mapping["IT-13"] = ["IT-13"]
+            zone_mapping["IT-14"] = ["IT-14"]
+            zone_mapping["IT-15"] = ["IT-15"]
+            zone_mapping["IT-16"] = ["IT-16"]
+            zone_mapping["IT-17"] = ["IT-17"]
+            zone_mapping["IT-18"] = ["IT-18"]
+            zone_mapping["IT-19"] = ["IT-19"]
+            zone_mapping["IT-20"] = ["IT-20"]
+        end
+    end
+end
 
-function create_res_and_demand_time_series(run_of_river, wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zones = nothing)
+function create_res_and_demand_time_series(wind_onshore, wind_offshore, pv, scenario_data, climate_year, zone_mapping; zones = nothing, run_of_river = _DF.DataFrame())
     if isnothing(zones)
         zones = [z for (z, zone) in zone_mapping]
     end
@@ -284,10 +179,9 @@ function create_res_and_demand_time_series(run_of_river, wind_onshore, wind_offs
         push!(timeseries_data["max_demand"], zone => [])
         push!(timeseries_data["run_of_river"], zone => [])
 
-        #if haskey(zone_mapping, zone)
-        #    tyndp_zone = zone_mapping[zone][1]
-        #end
-        tyndp_zone = zone
+        if haskey(zone_mapping, zone)
+            tyndp_zone = zone_mapping[zone][1]
+        end
 
 
         wind_series_onshore = wind_onshore[wind_onshore[!, "area"] .== tyndp_zone, climate_year]
@@ -299,8 +193,10 @@ function create_res_and_demand_time_series(run_of_river, wind_onshore, wind_offs
         pv_series = pv[pv[!, "area"] .== tyndp_zone, climate_year]
         timeseries_data["solar_pv"][zone] = pv_series
 
-        run_of_river_series = run_of_river[run_of_river[!, "area"] .== tyndp_zone, climate_year]
-        timeseries_data["run_of_river"][zone] = run_of_river_series
+        if !isempty(run_of_river)
+            run_of_river_series = run_of_river[run_of_river[!, "area"] .== tyndp_zone, climate_year]
+            timeseries_data["run_of_river"][zone] = run_of_river_series
+        end
 
         for i in 1:length(wind_onshore[!,1])
             if i <= length(scenario_data[tyndp_zone]["demand"])
@@ -353,49 +249,53 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
     return grid_data
 end
 
-function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_data)
-    number_of_hours = hour_end - hour_start + 1
-    mp_grid_data = InfrastructureModels.replicate(grid_data_orig, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
+function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_data; use_regions = false)
+    if use_regions == true
+        return multiperiod_grid_data_regional(grid_data_orig, hour_start, hour_end, timeseries_data)
+    else
+        number_of_hours = hour_end - hour_start + 1
+        mp_grid_data = InfrastructureModels.replicate(grid_data_orig, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
 
-    for (n, network) in mp_grid_data["nw"]
-        hour = hour_start + parse(Int, n) - 1 # to make sure that the correct hour is chosen if start_hour ≠ 1
-        for (l, load) in network["load"]
-            if haskey(load, "country_name")
-                zone = load["country_name"]
-            else
-                zone = load["zone"]
-            end
-            if haskey(timeseries_data["demand"], zone)
-                ratio = (timeseries_data["max_demand"][zone] / grid_data_orig["baseMVA"]) / load["country_peak_load"]
-                if zone == "NO1" || zone == "NO2" # comes from the weird tyndp data where the demand for the NO zones is somewhat aggregated!!!!!
-                    ratio = ratio / 2
+        for (n, network) in mp_grid_data["nw"]
+            hour = hour_start + parse(Int, n) - 1 # to make sure that the correct hour is chosen if start_hour ≠ 1
+            for (l, load) in network["load"]
+                if haskey(load, "country_name")
+                    zone = load["country_name"]
+                else
+                    zone = load["zone"]
                 end
-                load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
+                if haskey(timeseries_data["demand"], zone)
+                    ratio = (timeseries_data["max_demand"][zone] / grid_data_orig["baseMVA"]) / load["country_peak_load"]
+                    if zone == "NO1" || zone == "NO2" # comes from the weird tyndp data where the demand for the NO zones is somewhat aggregated!!!!!
+                        ratio = ratio / 2
+                    end
+                    load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
+                end
+            end
+            for (g, gen) in network["gen"]
+                zone = gen["zone"]
+                if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
+                    gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
+                    gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+                elseif gen["type_tyndp"] == "Offshore Wind" && haskey(timeseries_data["wind_offshore"], zone)
+                    gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
+                    gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+                elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
+                    gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+                    gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+                end
+            end
+            for (b, border) in network["borders"]
+                flow = timeseries_data["xb_flows"][border["name"]]["flow"][1, hour]
+                if abs(flow) > border["border_cap"]
+                    border["flow"] = sign(flow) * border["border_cap"] * 0.95  # to avoid numerical infeasibility & compensate for possible HVDC losses
+                else
+                    border["flow"] = flow
+                end
             end
         end
-        for (g, gen) in network["gen"]
-            zone = gen["zone"]
-            if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
-                gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
-                gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-            elseif gen["type_tyndp"] == "Offshore Wind" && haskey(timeseries_data["wind_offshore"], zone)
-                gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-                gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
-                gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-                gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            end
-        end
-        for (b, border) in network["borders"]
-            flow = timeseries_data["xb_flows"][border["name"]]["flow"][1, hour]
-            if abs(flow) > border["border_cap"]
-                border["flow"] = sign(flow) * border["border_cap"] * 0.95  # to avoid numerical infeasibility & compensate for possible HVDC losses
-            else
-                border["flow"] = flow
-            end
-        end
+        return mp_grid_data
     end
-    return mp_grid_data
 end
 
 function multiperiod_grid_data_regional(grid_data_orig, hour_start, hour_end, timeseries_data)
@@ -411,7 +311,7 @@ function multiperiod_grid_data_regional(grid_data_orig, hour_start, hour_end, ti
                 zone = load["zone"]
             end
             if haskey(timeseries_data["demand"], zone)
-                load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["powerportion"]*timeseries_data["max_demand"][zone]/ grid_data_orig["baseMVA"]#grid_data_orig["load"][l]["pd"] * ratio
+                load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["powerportion"]*timeseries_data["max_demand"][zone]/ grid_data_orig["baseMVA"] #grid_data_orig["load"][l]["pd"] * ratio
             end
         end
         for (g, gen) in network["gen"]
@@ -425,7 +325,7 @@ function multiperiod_grid_data_regional(grid_data_orig, hour_start, hour_end, ti
             elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
                 gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
                 gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            elseif gen["type_tyndp"] == "Run-of-River" && haskey(timeseries_data["run_of_river"], zone)
+            elseif gen["type_tyndp"] == "Run-of-River" && haskey(timeseries_data["run_of_river"], zone) && !isempty(timeseries_data["run_of_river"][zone])
                 gen["pg"] =  timeseries_data["run_of_river"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
                 gen["pmax"] =  timeseries_data["run_of_river"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
             end
@@ -590,76 +490,31 @@ function merge_zones!(data; merge_zones = Dict())
     end
 end
 
-
-# function get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)
-#     zone = zone_grid["zones"][1]
-#     borders = Dict{String, Any}()
-#     for (b, border) in zone_grid["borders"]
-#         borders[border["name"]] = Dict{String, Any}("flow" => zeros(1, length(zonal_result)))
-#         if haskey(zone_mapping, border["name"])
-#             tyndp_zone_fr = zone_mapping[zone][1]
-#             tyndp_zone_to = zone_mapping[border["name"]][1]
-        
-#             int_name_fr = join([tyndp_zone_fr,"-",tyndp_zone_to])
-#             int_name_to = join([tyndp_zone_to,"-",tyndp_zone_fr])
-#             flow = 0
-#             for (r, res) in zonal_result
-#                 for (b, branch) in zonal_input["branch"]
-#                     if branch["name"] == int_name_fr
-#                         flow = res["solution"]["branch"][b]["pf"]
-#                     elseif branch["name"] == int_name_to
-#                         flow = res["solution"]["branch"][b]["pt"]
-#                     end
-#                 end
-#                 borders[border["name"]]["flow"][1, parse(Int, r)] = flow
-#             end   
-#         end
-#      end
-#      return borders
-# end
-
 function get_xb_flows(zone_grid, zonal_result, zonal_input, zone_mapping)
+    zone = zone_grid["zones"][1]
     borders = Dict{String, Any}()
-    a= 0
     for (b, border) in zone_grid["borders"]
-        
         borders[border["name"]] = Dict{String, Any}("flow" => zeros(1, length(zonal_result)))
         if haskey(zone_mapping, border["name"])
-
-            for zone in zone_grid["zones"]
-                tyndp_zone_fr = zone_mapping[zone][1]
-                tyndp_zone_to = zone_mapping[border["name"]][1]
-
-                    
-                int_name_fr = join([tyndp_zone_fr,"-",tyndp_zone_to])
-                int_name_to = join([tyndp_zone_to,"-",tyndp_zone_fr])
-                print(int_name_fr)
-                print("\n")
-                
-                flow = 0
-                for (r, res) in zonal_result
-                    for (b, branch) in zonal_input["branch"]
-                        if branch["name"] == int_name_fr
-                            flow = res["solution"]["branch"][b]["pf"]
-                                                        
-                        elseif branch["name"] == int_name_to
-                            flow = res["solution"]["branch"][b]["pt"]
-                                                        
-                        end
-                    
-                    
-                    
+            tyndp_zone_fr = zone_mapping[zone][1]
+            tyndp_zone_to = zone_mapping[border["name"]][1]
+        
+            int_name_fr = join([tyndp_zone_fr,"-",tyndp_zone_to])
+            int_name_to = join([tyndp_zone_to,"-",tyndp_zone_fr])
+            flow = 0
+            for (r, res) in zonal_result
+                for (b, branch) in zonal_input["branch"]
+                    if branch["name"] == int_name_fr
+                        flow = res["solution"]["branch"][b]["pf"]
+                    elseif branch["name"] == int_name_to
+                        flow = res["solution"]["branch"][b]["pt"]
                     end
-
-                    if sum(flow) != 0
-                        borders[border["name"]]["flow"][1, parse(Int, r)] = flow
-                    end
-                    
-                end   
-            end
+                end
+                borders[border["name"]]["flow"][1, parse(Int, r)] = flow
+            end   
         end
-    end
-    return borders
+     end
+     return borders
 end
 
 
@@ -960,23 +815,6 @@ function scale_generation_updated!(tyndp_capacity, grid_data, scenario, climate_
                     # find a bus in the same zone to attach the new generator
                     node_to_use = nothing
                     node_to_use = select_bus_for_new_generator(grid_data, zone, typ)
-                    # for (bkey, bus) in grid_data["bus"]
-                    #     if haskey(bus, "zone") && bus["zone"] == zone
-                    #         # prefer bus with bus_type==2 if available
-                    #         if haskey(bus, "bus_i")
-                    #             node_to_use = bus["bus_i"]
-                    #             break
-                    #         else
-                    #             # fallback to key as integer if it parses
-                    #             try
-                    #                 node_to_use = parse(Int, bkey)
-                    #                 break
-                    #             catch
-                    #                 continue
-                    #             end
-                    #         end
-                    #     end
-                    # end
 
                     if isnothing(node_to_use)
                         @warn "No bus found in zone $(zone) to attach new generator of type $(typ). Skipping addition."
@@ -1235,7 +1073,13 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
         end
         for (bk, bdict) in grid_data["bus"]
             # some bus dictionaries may store zone under "zone"
-            bus_zone = get(bdict, "region", nothing)
+            if haskey(bdict, "region")
+                bus_zone = get(bdict, "region", nothing)
+            elseif haskey(bdict, "zone")
+                bus_zone = get(bdict, "zone", nothing)
+            end
+                # others may store it under "region"
+
             if bus_zone == zone
                 # prefer explicit bus_i field, else convert the dictionary key
                 ib = nothing
@@ -1344,9 +1188,8 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
         end
     end
 
-    error("No suitable bus found in zone: $zone")
+    #error("No suitable bus found in zone: $zone")
 end
-
 
 
 
@@ -1357,7 +1200,16 @@ function scale_generation_updated_regions_renshare!(tyndp_capacity, grid_data, s
     baseMVA = grid_data["baseMVA"]
 
     # collect zones present in the grid (from generators)
-    zones = unique([ gen["region"] for (g, gen) in grid_data["gen"] if haskey(gen, "region") ])
+    zones = []
+    for (g, gen) in grid_data["gen"]
+        if haskey(gen, "region") 
+            push!(zones, gen["region"])
+        else
+             push!(zones, gen["zone"])
+        end
+    end
+
+    zones = unique(zones)
 
     for zone in zones
         println("Processing zone: ", zone)
@@ -1376,7 +1228,7 @@ function scale_generation_updated_regions_renshare!(tyndp_capacity, grid_data, s
         types_present = Set{String}()
         # from existing gens
         for (g, gen) in grid_data["gen"]
-            if haskey(gen, "region") && gen["region"] == zone
+            if (haskey(gen, "region") && gen["region"] == zone) || (haskey(gen, "zone") && gen["zone"] == zone)
                 # prefer type_tyndp where present, else "type"
                 if haskey(gen, "type_tyndp")
                     push!(types_present, string(gen["type_tyndp"]))
