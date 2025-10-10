@@ -150,7 +150,7 @@ solver = JuMP.optimizer_with_attributes(Gurobi.Optimizer, "OutputFlag" => 0)
 tyndp_version = "2024"
 fetch_data = true
 number_of_hours = 8760
-scenario = "DE"
+scenario = "FENICE"
 year = "2050"
 climate_year = "2009"
 # A sample set for TYNDP 2020

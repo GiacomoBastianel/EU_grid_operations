@@ -33,7 +33,7 @@ hour_start = 1
 hour_end = 8760 #720
 
 result_file = "/Users/SEM2/.julia/dev/EU_grid_operations/results/TYNDP2024/result_multiperiod_FENICE.json"
-result = JSON.parsefile(result_file)
+results = JSON.parsefile(result_file)
 
 zone_grid_file = "/Users/SEM2/.julia/dev/EU_grid_operations/results/TYNDP2024/zone_grid.json"
 zone_grid = JSON.parsefile(zone_grid_file)
@@ -581,3 +581,17 @@ df_combined = vcat(df_header[:, common_cols], df[:, common_cols])
 
 CSV.write("/Users/SEM2/.julia/dev/EU_grid_operations/results/TYNDP2024/zonal_branches_results.csv", df_combined)
 
+
+
+
+list_branches= [ "593", "680", "642", "624",
+"701",
+"682",
+"632",
+"553",
+"634",
+"697",
+"700"]
+
+dict_aaa = Dict(key => value for (key, value) in flows_ac if key in list_branches)
+total_flow = reduce(.+, values(dict_aaa))

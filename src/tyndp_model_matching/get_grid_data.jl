@@ -82,6 +82,7 @@ function get_grid_data_2020(scenario, year, climate_year)
         "Gas CCGT present 2"  => 89,
         "Reservoir"  => 18,
         "Run-of-River"  => 18,
+        "Hydro Pumped Storage" => 18, #to check
         "Gas conventional old 1"  => 120,
         "Gas conventional old 2"  => 120,
         "PS Closed"  => 120,
@@ -142,6 +143,7 @@ function get_grid_data_2020(scenario, year, climate_year)
         "Gas CCGT present 2"  => (57*3.6)*10^(-3),
         "Reservoir"  => 0,
         "Run-of-River"  => 0,
+        "Hydro Pumped Storage" => 0, #to check
         "Gas conventional old 1"  => (57*3.6)*10^(-3),
         "Gas conventional old 2"  => (57*3.6)*10^(-3),
         "PS Closed"  => (57*3.6)*10^(-3),
@@ -201,6 +203,7 @@ function get_grid_data_2020(scenario, year, climate_year)
         "Gas CCGT present 2"        => 5,
         "Reservoir"                 => 3,
         "Run-of-River"              => 3,
+        "Hydro Pumped Storage"      => 3, #to check
         "Gas conventional old 1"    => 5,
         "Gas conventional old 2"    => 5,
         "PS Closed"                 => 3,
@@ -260,6 +263,7 @@ function get_grid_data_2020(scenario, year, climate_year)
         "Gas CCGT present 2"  => 90,
         "Reservoir"  => 0,
         "Run-of-River"  => 0,
+        "Hydro Pumped Storage"      => 0, #to check        
         "Gas conventional old 1"  => 90,
         "Gas conventional old 2"  => 90,
         "PS Closed"  => 150,
@@ -428,6 +432,7 @@ function get_grid_data_2024(scenario, year, climate_year)
         "Gas CCGT present 2"  => 89,
         "Reservoir"  => 53,
         "Run-of-River"  => 53,
+        "Hydro Pumped Storage"      => 53, #to check
         "Gas Conventional old 1"  => 120,
         "Gas Conventional old 2"  => 120,
         "PS Closed"  => 120,
@@ -472,7 +477,7 @@ function get_grid_data_2024(scenario, year, climate_year)
         "Lignite old 2 Bio"  => 120,
         "Oil shale old"  => 150,
         "Gas CCGT CCS"  => 180,
-        "VOLL" => 10000,
+        "VOLL" => 10000, 
         "HVDC" => 0
     )
     
@@ -492,6 +497,7 @@ function get_grid_data_2024(scenario, year, climate_year)
         "Gas CCGT present 2"  => (57*3.6)*10^(-3),
         "Reservoir"  => 0,
         "Run-of-River"  => 0,
+        "Hydro Pumped Storage"      => 0, #to check
         "Gas Conventional old 1"  => (57*3.6)*10^(-3),
         "Gas Conventional old 2"  => (57*3.6)*10^(-3),
         "PS Closed"  => (57*3.6)*10^(-3),
@@ -554,6 +560,7 @@ function get_grid_data_2024(scenario, year, climate_year)
         "Gas CCGT present 2"        => 5,
         "Reservoir"                 => 3,
         "Run-of-River"              => 3,
+        "Hydro Pumped Storage"      => 3, #to check
         "Gas Conventional old 1"    => 5,
         "Gas Conventional old 2"    => 5,
         "PS Closed"                 => 3,
@@ -616,6 +623,7 @@ function get_grid_data_2024(scenario, year, climate_year)
         "Gas CCGT present 2"  => 90,
         "Reservoir"  => 0,
         "Run-of-River"  => 0,
+        "Hydro Pumped Storage"      => 0, #to check
         "Gas Conventional old 1"  => 90,
         "Gas Conventional old 2"  => 90,
         "PS Closed"  => 150,
@@ -683,6 +691,7 @@ function add_NOx_and_SOx_emissions(input_data)
     "Gas CCGT present 2"          => 0.2334,
     "Reservoir"                   => 0,
     "Run-of-River"                => 0,
+    "Hydro Pumped Storage"      => 0, #to check
     "Gas conventional old 1"      => 0.2334,
     "Gas conventional old 2"      => 0.2334,
     "PS Closed"                   => 0.2334,
@@ -745,6 +754,7 @@ function add_NOx_and_SOx_emissions(input_data)
     "Gas CCGT present 2"          => 0.0046,
     "Reservoir"                   => 0,
     "Run-of-River"                => 0,
+    "Hydro Pumped Storage"      => 0, #to check
     "Gas conventional old 1"      => 0.0046,
     "Gas conventional old 2"      => 0.0046,
     "PS Closed"                   => 0.0046,

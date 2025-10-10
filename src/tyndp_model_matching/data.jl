@@ -313,6 +313,31 @@ function add_gen!(input_data, zone, cost, node, pmax, type)
     input_data["gen"]["$new_gen_id"]["ncost"]         = 2
 end
 
+function add_gen_regional!(input_data, zone, region, cost, node, pmax, type)
+    new_gen_id = maximum([gen["index"] for (g, gen) in input_data["gen"]]) + 1
+    input_data["gen"]["$new_gen_id"] = Dict{String, Any}()
+    input_data["gen"]["$new_gen_id"]["zone"]          = zone
+    input_data["gen"]["$new_gen_id"]["region"]          = region
+    input_data["gen"]["$new_gen_id"]["type_tyndp"]    = type
+    input_data["gen"]["$new_gen_id"]["model"]         = 2
+    input_data["gen"]["$new_gen_id"]["name"]          = "OWFHUB"
+    input_data["gen"]["$new_gen_id"]["marginal_cost"] = cost
+    input_data["gen"]["$new_gen_id"]["gen_bus"]       = node
+    input_data["gen"]["$new_gen_id"]["pmax"]          = pmax / input_data["baseMVA"]
+    input_data["gen"]["$new_gen_id"]["country"]       = 8
+    input_data["gen"]["$new_gen_id"]["vg"]            = 1.0
+    input_data["gen"]["$new_gen_id"]["source_id"]     = Any["gen", new_gen_id]
+    input_data["gen"]["$new_gen_id"]["index"]         = new_gen_id
+    input_data["gen"]["$new_gen_id"]["cost"]          = [cost, 0.0]
+    input_data["gen"]["$new_gen_id"]["qmax"]          = pmax * 0.5 / input_data["baseMVA"] 
+    input_data["gen"]["$new_gen_id"]["gen_status"]    = 1
+    input_data["gen"]["$new_gen_id"]["qmin"]          = -pmax * 0.5 / input_data["baseMVA"] 
+    input_data["gen"]["$new_gen_id"]["co2_add_on"]    = 0.0
+    input_data["gen"]["$new_gen_id"]["type"]          = type
+    input_data["gen"]["$new_gen_id"]["pmin"]          = 0.0
+    input_data["gen"]["$new_gen_id"]["ncost"]         = 2
+end
+
 function add_storage!(data, s_idx, g, n, nodal_data, node_id)
     data["storage_simple"]["$s_idx"] = Dict{String, Any}()
     data["storage_simple"]["$s_idx"]["storage_bus"] = n

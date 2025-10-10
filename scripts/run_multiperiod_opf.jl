@@ -46,7 +46,7 @@ if load_data == true
     ntcs, zones, arcs, tyndp_capacity, tyndp_demand, gen_types, gen_costs, emission_factor, inertia_constants, start_up_cost, node_positions = _EUGO.get_grid_data(tyndp_version, scenario, year, climate_year) # import zonal input (mainly used for cost data)
     pv, wind_onshore, wind_offshore = _EUGO.load_res_data()
 end
-
+gdshfs
 print("ALL FILES LOADED", "\n")
 print("----------------------","\n")
 ######
@@ -144,6 +144,177 @@ for row in eachrow(df)
 end
 
 # map EU-Grid zones to TYNDP model zones
+using XLSX
+using DataFrames
+using CSV
+
+# Path to the Excel file
+file_path = "c:/Users/SEM2/.julia/dev/EU_grid_operations/data_sources/Hypergrid-Terna.xlsx"
+
+
+
+sheet_name = "new_bus_dc"
+xlsx = XLSX.readxlsx(file_path)
+sheet = xlsx[sheet_name]  # get the specific sheet
+df = DataFrame(XLSX.readtable(file_path, sheet_name)...)
+for row in eachrow(df)
+    dc_voltage = row[:dc_voltage]   
+    zone = row[:zone]
+    name = row[:Bus_name]
+    dc_bus_id = hasproperty(row, :Bus_idx) ? row[:Bus_idx] : nothing
+    lat = hasproperty(row, :lat) ? row[:lat] : 0
+    lon = hasproperty(row, :lon) ? row[:lon] : 0
+    _EUGO.add_dc_bus!(EU_grid, dc_voltage, zone, name; dc_bus_id=dc_bus_id, lat=lat, lon=lon)
+end
+
+
+
+# Read the sheet into a DataFrame
+xlsx = XLSX.readxlsx(file_path)
+sheet_name = "new_construction_terna"
+sheet = xlsx[sheet_name]
+df = DataFrame(XLSX.gettable(sheet)...)
+# Display all column names
+function find_branch(zone_grid::Dict, from_bus::Int, to_bus::Int)
+    for (branch_id, branch_data) in zone_grid["branch"]
+        if branch_data isa Dict
+            f = branch_data["f_bus"]
+            t = branch_data["t_bus"]
+            if (f == from_bus && t == to_bus) || (f == to_bus && t == from_bus)
+                return branch_id
+            end
+        else
+            @warn "branch_data is not a dictionary" branch_id branch_data
+        end
+        #print(branch_id)
+        #print(branch_data)
+        #f = zone_grid["branch"][branch_id]["f_bus"]
+        #t = zone_grid["branch"][branch_id]["t_bus"]
+        #f = branch_data["f_bus"]
+        #t = branch_data["t_bus"]
+        
+    end
+    return nothing  # if no matching branch is found
+end
+
+function find_branch_dc(zone_grid::Dict, from_bus::Int, to_bus::Int)
+    for (branch_id, branch_data) in zone_grid["branchdc"]
+        if branch_data isa Dict
+            f = branch_data["f_bus"]
+            t = branch_data["t_bus"]
+            if (f == from_bus && t == to_bus) || (f == to_bus && t == from_bus)
+                return branch_id
+            end
+        else
+            @warn "branch_data is not a dictionary" branch_id branch_data
+            
+        end
+        
+    end
+    return nothing  # if no matching branch is found
+end
+
+for row in eachrow(df)
+    if row[:type] == "AC"
+        if row[:existing] == "yes"
+            if row[:year_completment] <= parse(Int,year)
+                fbus = row[:fbus]   
+                tbus = row[:tbus] 
+                branch_id = find_branch(zone_grid, fbus, tbus)            
+                #delete!(zone_grid_un["branchdc"], str(number))
+                EU_grid["branch"]["power_rating"]=row[:power_rating]
+            end
+
+        else
+            if row[:year_completment] <= int(year)
+                fbus = row[:fbus]   
+                tbus = row[:tbus] 
+                power_rating = row[:power_rating]
+                _EUGO.add_ac_branch!(EU_grid, fbus, tbus, power_rating)
+            end
+        end
+
+    else 
+        if row[:year_completment] <= parse(Int,year)
+            if row[:existing] == "yes"
+                if row[:from_AC_to_DC] == "yes"
+                    fbus = row[:fbus]   
+                    tbus = row[:tbus]
+                    branch_id = find_branch(zone_grid, fbus, tbus)          
+                    delete!(EU_grid["branch"], string(branch_id))
+                    dcfbus = row[:dcfbus]   
+                    dctbus = row[:dctbus] 
+                    power_rating = row[:power_rating]  
+                    _EUGO.add_dc_branch!(EU_grid, dcfbus, dctbus, power_rating)
+                    if row[:converter_need_from] == "yes"                         
+                        power_rating = row[:power_rating]
+                        
+                        power_rating_conv = row[:converter_from_power_rating]
+                        zone = row[:converter_from_zone]
+                        #converter_idx = row[:converter_idx]
+                        _EUGO.add_converter!(EU_grid, fbus, dcfbus, power_rating_conv,zone = zone)#, conv_id=converter_idx )
+                    end
+                    if row[:converter_need_to] == "yes"
+                        power_rating = row[:power_rating]
+                        zone = row[:converter_to_zone]
+                        power_rating_conv = row[:converter_to_power_rating]
+                        
+                        #converter_idx = row[:converter_idx]
+                        _EUGO.add_converter!(EU_grid, tbus, dctbus, power_rating_conv,zone = zone)#, conv_id=converter_idx )
+                    end
+
+                else
+                    fbus = row[:dcfbus]   
+                    tbus = row[:dctbus] 
+                    branch_id = find_branch(zone_grid, fbus, tbus)  
+                    EU_grid["branchdc"]["power_rating"]=row[:power_rating]
+                    if row[:converter_need_from] == "yes"                         
+                        power_rating = row[:power_rating]
+                        zone = row[:converter_from_zone]
+                        power_rating_conv = row[:converter_from_power_rating]
+                        #converter_idx = row[:converter_idx]
+                        _EUGO.add_converter!(EU_grid, fbus, dcfbus, power_rating_conv,zone = zone)#, conv_id=converter_idx )
+                    end
+                    if row[:converter_need_to] == "yes"
+                        power_rating = row[:power_rating]
+                        zone = row[:converter_to_zone]
+                        power_rating_conv = row[:converter_to_power_rating]
+                        #converter_idx = row[:converter_idx]
+                        _EUGO.add_converter!(EU_grid, tbus, dctbus, power_rating_conv,zone = zone)#, conv_id=converter_idx )
+                    end
+                end
+            else
+                fbus = row[:fbus]   
+                tbus = row[:tbus] 
+                power_rating = row[:power_rating]  
+                dcfbus = row[:dcfbus]   
+                dctbus = row[:dctbus] 
+                _EUGO.add_dc_branch!(EU_grid, dcfbus, dctbus, power_rating)
+                if row[:converter_need_from] == "yes"                         
+                        power_rating = row[:power_rating]
+                        
+                        power_rating_conv = row[:converter_from_power_rating]
+                        zone = row[:converter_from_zone]
+                        #converter_idx = row[:converter_idx]
+                        _EUGO.add_converter!(EU_grid, fbus, dcfbus, power_rating_conv,zone = zone)#, conv_id=converter_idx )
+                end
+                if row[:converter_need_to] == "yes"
+                        power_rating = row[:power_rating]
+                        zone = row[:converter_to_zone]
+                        power_rating_conv = row[:converter_to_power_rating]
+                        
+                        #converter_idx = row[:converter_idx]
+                        _EUGO.add_converter!(EU_grid, tbus, dctbus, power_rating_conv,zone = zone)#, conv_id=converter_idx )
+                end
+
+            end
+        end
+
+    end
+end
+
+delete!(EU_grid["branch"], "power_rating")
+
 zone_mapping = _EUGO.map_zones()
 
 gen_SICI = Dict(g => gen for (g, gen) in EU_grid["gen"] if gen["zone"] == "IT-SICI")
@@ -172,6 +343,8 @@ _EUGO.plot_grid(zone_grid, plot_filename)
 s = Dict("output" => Dict("branch_flows" => true), "conv_losses_mp" => true, "fix_cross_border_flows" => true,  "objective_components" => ["gen", "demand"])
 
 mp_zone_grid = _EUGO.multiperiod_grid_data(zone_grid, hour_start_idx, hour_end_idx, timeseries_data)
+
+gurobi = JuMP.optimizer_with_attributes(Gurobi.Optimizer,     "Crossover" => 0,    "Method" => 2,)
 
 result = _PMACDC.solve_acdcopf(mp_zone_grid, _PM.DCPPowerModel, gurobi; multinetwork=true, setting = s)
 

@@ -13,7 +13,7 @@ import Memento
 import JuMP
 import Gurobi  # needs startvalues for all variables!
 import JSON
-import CbaOPF
+
 import DataFrames; const _DF = DataFrames
 import CSV
 import Feather
@@ -45,13 +45,6 @@ _EUGO.add_load_and_pst_properties!(EU_grid)
  
 #zones = unique(EU_grid["bus"]["$b_id"]["zone"] for (b_id,b) in EU_grid["bus"])
 isolated_zones = ["IT-CNOR","IT-CSUD","IT-NORD","IT-SUD","IT-SICI","IT-SA"]
- # [IT-CSUD, IT-SUD, IT-NORD, IT-SICI,]
-
-
-
-
-
-
 
  
 #### LOAD TYNDP SCENARIO DATA ##########
