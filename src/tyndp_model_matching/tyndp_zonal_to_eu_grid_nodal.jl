@@ -1,3 +1,63 @@
+# This function scales the "pmax" value of each generator based on the installed total capacity coming from the TYNDP data. 
+# tyndp_capacity ::DataFrame - The installed generation capacity coming from the zonal model, per zone and generation type, climate year and scenario
+# grid_data ::Dict{String, Any} - EU grid model
+# scneario ::String - Name of the scenario, e.g. "GA2030"
+# climate_year ::String - Climate year e.g. "2007"
+# zone_mapping ::Dict{String, Any} - Dictionary containing the mapping of zone names between both models
+# ns_hub_cap ::Float64 - Capacity of the North Sea energy hub as optional keyword argument. Default value coming from the grid model is 10 GW.
+function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false, tyndp = "2020")
+    for (g, gen) in grid_data["gen"]
+        zone = gen["zone"]
+
+        # Check if generator type exists in input data
+        if haskey(gen, "type")
+            type = gen["type"]
+        else
+            print(g, "\n")
+        end
+
+        # Calculate zonal capacity: For LU there are three different zones coming from the TYNDP data
+        zonal_tyndp_capacity = 0
+        if haskey(zone_mapping, zone)
+            tyndp_zones = zone_mapping[zone]
+        else
+            tyndp_zones = Dict{String, Any}()
+        end
+        for tyndp_zone in tyndp_zones
+            # obtain 
+            zonal_capacity = get_generation_capacity(tyndp_capacity, scenario, type, climate_year, tyndp_zone, tyndp = tyndp)
+            if !isempty(zonal_capacity)
+                zonal_tyndp_capacity =  zonal_tyndp_capacity + zonal_capacity[1]
+            end
+        end
+
+        # If the zonal capacity is different than zero, scale "pmax" based on the ratios of the zonal capacities
+        if zonal_tyndp_capacity !=0
+            for (z, zone_) in grid_data["zonal_generation_capacity"]
+                if zone_["zone"] == zone
+                    scaling_factor = max(0.0, (zonal_tyndp_capacity / grid_data["baseMVA"] / zone_[type]) )
+                    if type == "onshore_wind"
+                        println(zone, scaling_factor)
+                    end
+                    if !exclude_offshore_wind
+                        if gen["type"] != "Offshore Wind"
+                            gen["pmax"] = gen["pmax"] * scaling_factor
+                        end
+                    else
+                        gen["pmax"] = gen["pmax"] * scaling_factor
+                    end
+                end
+            end
+        end
+
+        # Check if a different capacity should be written into the offshore wind generator NSEH
+        if !isnothing(ns_hub_cap)
+            if zone == "NSEH"
+                gen["pmax"] = ns_hub_cap
+            end
+        end
+    end 
+end
 # This function maps the zone names in the EU Grid model to the zone names of the TYNDP model
 function map_zones(;region_names = [])
     zone_mapping = Dict{String, Any}()
