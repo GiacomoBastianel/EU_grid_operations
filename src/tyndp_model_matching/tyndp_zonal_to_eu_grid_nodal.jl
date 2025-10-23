@@ -243,62 +243,6 @@ function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_
     end
 end
 
-function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_data; use_regions = false)
-    number_of_hours = hour_end - hour_start + 1
-    mp_grid_data = InfrastructureModels.replicate(grid_data_orig, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
-
-    for (n, network) in mp_grid_data["nw"]
-        hour = hour_start + parse(Int, n) - 1 # to make sure that the correct hour is chosen if start_hour ≠ 1
-        for (l, load) in network["load"]
-            if use_regions == true && haskey(load, "region")
-                zone = load["region"]   
-            else
-                if haskey(load, "country_name")
-                    zone = load["country_name"]
-                else
-                    zone = load["zone"]
-                end
-            end
-            if haskey(timeseries_data["demand"], zone)
-                if use_regions == true
-                    ratio =  grid_data_orig["load"][l]["powerportion"] /  grid_data_orig["load"][l]["pd"] * timeseries_data["max_demand"][zone] / grid_data_orig["baseMVA"]
-                else
-                    ratio = (timeseries_data["max_demand"][zone] / grid_data_orig["baseMVA"]) / load["country_peak_load"]
-                end
-                if zone == "NO1" || zone == "NO2" # comes from the weird tyndp data where the demand for the NO zones is somewhat aggregated!!!!!
-                    ratio = ratio / 2
-                end
-                load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
-            end
-        end
-        for (g, gen) in network["gen"]
-            zone = gen["zone"]
-            if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
-                gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
-                gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-            elseif gen["type_tyndp"] == "Offshore Wind" && haskey(timeseries_data["wind_offshore"], zone)
-                gen["pg"] =  timeseries_data["wind_offshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
-                gen["pmax"] =  timeseries_data["wind_offshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
-                gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-                gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            elseif gen["type_tyndp"] == "Run-of-River" && haskey(timeseries_data["run_of_river"], zone) && !isempty(timeseries_data["run_of_river"][zone])
-                gen["pg"] =  timeseries_data["run_of_river"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-                gen["pmax"] =  timeseries_data["run_of_river"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
-            end
-        end
-        for (b, border) in network["borders"]
-            flow = timeseries_data["xb_flows"][border["name"]]["flow"][1, hour]
-            if abs(flow) > border["border_cap"]
-                border["flow"] = sign(flow) * border["border_cap"] * 0.95  # to avoid numerical infeasibility & compensate for possible HVDC losses
-            else
-                border["flow"] = flow
-            end
-        end
-    end
-    return mp_grid_data
-end
-
 function build_mn_data(file_name)
     mp_data = PowerModels.parse_file(file_name)
    
