@@ -88,14 +88,6 @@ result = _PMACDC.solve_acdcopf(mp_zone_grid, _PM.DCPPowerModel, gurobi; multinet
 #   println((n, sum([load["pflex"] for (l, load) in result["solution"]["nw"]["$n"]["load"]])))
 # end
 
-for n = 1: (hour_end_idx - hour_start_idx)
-  println((n, sum([strg["ps"] for (s, strg) in result["solution"]["nw"]["$n"]["storage"]])))
-end
-
-# This function will  create a dictionary with all hours as result. For all 8760 hours, this might be memory intensive
-# result = _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s)
-# obj = [result["$(i)"]["termination_status"] for i in 1:8760]; countmap(obj) # chcek objective
- 
-# An alternative is to run it in chuncks of "batch_size", which will store the results as json files, e.g. hour_1_to_batch_size, ....
-batch_size = 8760
-_EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
+# for n = 1: (hour_end_idx - hour_start_idx)
+#   println((n, sum([strg["ps"] for (s, strg) in result["solution"]["nw"]["$n"]["storage"]])))
+# end

@@ -26,6 +26,7 @@ const BASE_DIR = dirname(@__DIR__)
 
 
 include("create_eu_grid_model/create_european_grid.jl")
+include("create_eu_grid_model/add_network_elements.jl")
 include("tyndp_model_matching/get_value.jl")
 include("tyndp_model_matching/data.jl")
 include("tyndp_model_matching/load_data.jl")

@@ -536,11 +536,95 @@ function create_european_grid(;output_filename::String = "./data_sources/Europea
     European_grid["branch"]["8439"]["br_r"] = 0.001
     European_grid["branch"]["8340"]["br_r"] = 0.001
 
-
+    # add_sardinia_grid!(European_grid)
 
     string_data = JSON.json(European_grid)
     open(output_filename,"w" ) do f
         write(f,string_data)
     end
+end
 
+
+function add_sardinia_grid!(European_grid::Dict{String,Any})
+    # Adding Sardinia grid from a separate file
+    sardinia_filename = joinpath(BASE_DIR,"data_sources","sardinia_grid.xlsx")
+    
+    xlsx = XLSX.readxlsx(xlsx_file)
+    sheet_name = "BUS_AC"
+    df = DataFrame(XLSX.readtable(xlsx_file, sheet_name)...)
+
+    for row in eachrow(df)
+        row[:ac_voltage]
+        ac_voltage = row[:ac_voltage]   
+        zone = row[:zone]
+        name = row[:Bus_name]
+        lat = hasproperty(row, :lat) ? row[:lat] : 0
+        lon = hasproperty(row, :lon) ? row[:lon] : 0
+        add_ac_bus!(EU_grid, ac_voltage, zone, name; lat=lat, lon=lon)
+    end
+
+    sheet_name = "BUS_DC"
+    df = DataFrame(XLSX.readtable(xlsx_file, sheet_name)...)
+    for row in eachrow(df)
+        dc_voltage = row[:dc_voltage]   
+        zone = row[:zone]
+        name = row[:Bus_name]
+        lat = hasproperty(row, :lat) ? row[:lat] : 0
+        lon = hasproperty(row, :lon) ? row[:lon] : 0
+        add_dc_bus!(EU_grid, dc_voltage, zone, name; lat=lat, lon=lon)
+    end
+
+
+    sheet_name = "Converter"
+    df = DataFrame(XLSX.readtable(xlsx_file, sheet_name)...)
+    for row in eachrow(df)
+        ac_bus_idx = row[:ac_bus_idx]   
+        dc_bus_idx = row[:dc_bus_idx] 
+        power_rating = row[:power_rating]
+        zone = row[:zone]
+        converter_idx = row[:converter_idx]
+        add_converter!(EU_grid, ac_bus_idx, dc_bus_idx, power_rating, zone = zone)
+    end
+
+
+    sheet_name = "branch ac"
+    df = DataFrame(XLSX.readtable(xlsx_file, sheet_name)...)
+    for row in eachrow(df)   
+        fbus = row[:fbus]   
+        tbus = row[:tbus] 
+        power_rating = row[:power_rating]
+        add_ac_branch!(EU_grid, fbus, tbus, power_rating)
+    end
+
+
+    sheet_name = "branch dc"
+    df = DataFrame(XLSX.readtable(xlsx_file, sheet_name)...)
+    for row in eachrow(df)
+        fbus = row[:fbus]   
+        tbus = row[:tbus] 
+        power_rating = row[:power_rating]  
+        _EUGO.add_dc_branch!(EU_grid, fbus, tbus, power_rating)
+    end
+
+
+    sheet_name = "gen"
+    df = DataFrame(XLSX.readtable(xlsx_file, sheet_name)...)
+    for row in eachrow(df)
+        gen_bus = row[:gen_bus]   
+        gen_zone = row[:gen_zone] 
+        power_rating = row[:power_rating]
+        gen_type = row[:gen_type]
+        _EUGO.add_generator!(EU_grid, gen_bus, power_rating, gen_zone, gen_type)
+    end
+
+    sheet_name = "load"
+    df = DataFrame(XLSX.readtable(xlsx_file, sheet_name)...)
+    for row in eachrow(df)      
+        load_bus = row[:load_bus]   
+        load_zone = row[:load_zone] 
+        peak_power = row[:peak_power]
+        powerportion = row[:powerportion]
+        country_peak_load = row[:country_peak_load]
+        _EUGO.add_load!(EU_grid, load_bus, peak_power, load_zone, powerportion, country_peak_load)
+    end
 end
