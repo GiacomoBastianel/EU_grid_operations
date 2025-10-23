@@ -62,7 +62,7 @@ print("----------------------","\n")
 zone_mapping = _EUGO.map_zones()
 
 # Scale generation capacity based on TYNDP data
-_EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_mapping)
+_EUGO.scale_generation!(tyndp_capacity, EU_grid, tyndp_version, scenario, climate_year, zone_mapping)
 
 # For high impedance lines, set power rating to what is physically possible -> otherwise it leads to infeasibilities around XB lines
 _EUGO.fix_data!(EU_grid)

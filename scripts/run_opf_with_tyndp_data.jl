@@ -55,7 +55,7 @@ print("----------------------","\n")
 zone_mapping = _EUGO.map_zones()
 
 # Scale generation capacity based on TYNDP data
-_EUGO.scale_generation!(tyndp_capacity, EU_grid, scenario, climate_year, zone_mapping)
+_EUGO.scale_generation!(tyndp_capacity, EU_grid, tyndp_version, scenario, climate_year, zone_mapping)
 
 # Isolate zone: input is vector of strings, if you need to relax the fixing border flow assumptions use:
 # _EUGO.isolate_zones(EU_grid, ["DE"]; border_slack = x), this will leas to (1-slack)*xb_flow_ref < xb_flow < (1+slack)*xb_flow_ref
