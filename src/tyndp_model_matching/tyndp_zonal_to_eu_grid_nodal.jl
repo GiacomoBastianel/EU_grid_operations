@@ -235,6 +235,9 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
             gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
             gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+        elseif gen["type_tyndp"] == "Run-of-River" && haskey(timeseries_data["run_of_river"], zone) && !isempty(timeseries_data["run_of_river"][zone])
+            gen["pg"] =  timeseries_data["run_of_river"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+            gen["pmax"] =  timeseries_data["run_of_river"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
         end
     end
     for (b, border) in grid_data["borders"]
@@ -282,6 +285,9 @@ function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_
                 elseif gen["type_tyndp"] == "Solar PV" && haskey(timeseries_data["solar_pv"], zone)
                     gen["pg"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
                     gen["pmax"] =  timeseries_data["solar_pv"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+                elseif gen["type_tyndp"] == "Run-of-River" && haskey(timeseries_data["run_of_river"], zone) && !isempty(timeseries_data["run_of_river"][zone])
+                    gen["pg"] =  timeseries_data["run_of_river"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
+                    gen["pmax"] =  timeseries_data["run_of_river"][zone][hour] * grid_data_orig["gen"][g]["pmax"]
                 end
             end
             for (b, border) in network["borders"]
@@ -297,24 +303,36 @@ function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_
     end
 end
 
-function multiperiod_grid_data_regional(grid_data_orig, hour_start, hour_end, timeseries_data)
+function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_data; use_regions = false)
     number_of_hours = hour_end - hour_start + 1
     mp_grid_data = InfrastructureModels.replicate(grid_data_orig, number_of_hours, Set{String}(["source_type", "name", "source_version", "per_unit"]))
 
     for (n, network) in mp_grid_data["nw"]
         hour = hour_start + parse(Int, n) - 1 # to make sure that the correct hour is chosen if start_hour ≠ 1
         for (l, load) in network["load"]
-            if haskey(load, "region")
-                zone = load["region"]
+            if use_regions == true && haskey(load, "region")
+                zone = load["region"]   
             else
-                zone = load["zone"]
+                if haskey(load, "country_name")
+                    zone = load["country_name"]
+                else
+                    zone = load["zone"]
+                end
             end
             if haskey(timeseries_data["demand"], zone)
-                load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["powerportion"]*timeseries_data["max_demand"][zone]/ grid_data_orig["baseMVA"] #grid_data_orig["load"][l]["pd"] * ratio
+                if use_regions == true
+                    ratio =  grid_data_orig["load"][l]["powerportion"] /  grid_data_orig["load"][l]["pd"] * timeseries_data["max_demand"][zone] / grid_data_orig["baseMVA"]
+                else
+                    ratio = (timeseries_data["max_demand"][zone] / grid_data_orig["baseMVA"]) / load["country_peak_load"]
+                end
+                if zone == "NO1" || zone == "NO2" # comes from the weird tyndp data where the demand for the NO zones is somewhat aggregated!!!!!
+                    ratio = ratio / 2
+                end
+                load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
             end
         end
         for (g, gen) in network["gen"]
-            zone = gen["region"]
+            zone = gen["zone"]
             if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
                 gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
                 gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
@@ -684,11 +702,11 @@ function add_offshore_wind_connections!(input_data)
             dc_bus_name_off = join([gen["zone"],"_OWFHUB_", gen["gen_bus"]])
             dc_bus_name_on = join([gen["zone"],"_ON_",input_data["bus"]["$onshore_bus"]["index"]])
             # Add offshore dc bus:
-            input_data, dc_bus_idx_ow = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$ow_bus"]["lat"], lon = input_data["bus"]["$ow_bus"]["lon"], name = dc_bus_name_off)
+            input_data, dc_bus_idx_ow = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$ow_bus"]["lat"], lon = input_data["bus"]["$ow_bus"]["lon"])
             # Add offshore converter:    
             add_converter!(input_data, ow_bus, dc_bus_idx_ow, gen["pmax"])
             # Add onshore dc bus:
-            input_data, dc_bus_idx_on = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$onshore_bus"]["lat"], lon = input_data["bus"]["$onshore_bus"]["lon"], name = dc_bus_name_on)
+            input_data, dc_bus_idx_on = add_dc_bus!(input_data, dc_voltage; lat = input_data["bus"]["$onshore_bus"]["lat"], lon = input_data["bus"]["$onshore_bus"]["lon"])
             # Add onshore converter:
             add_converter!(input_data, onshore_bus, dc_bus_idx_on, gen["pmax"])
             # Add offshore cable:
