@@ -1,64 +1,3 @@
-# This function scales the "pmax" value of each generator based on the installed total capacity coming from the TYNDP data. 
-# tyndp_capacity ::DataFrame - The installed generation capacity coming from the zonal model, per zone and generation type, climate year and scenario
-# grid_data ::Dict{String, Any} - EU grid model
-# scneario ::String - Name of the scenario, e.g. "GA2030"
-# climate_year ::String - Climate year e.g. "2007"
-# zone_mapping ::Dict{String, Any} - Dictionary containing the mapping of zone names between both models
-# ns_hub_cap ::Float64 - Capacity of the North Sea energy hub as optional keyword argument. Default value coming from the grid model is 10 GW.
-function scale_generation!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping; ns_hub_cap = nothing, exclude_offshore_wind = false, tyndp = "2020")
-    for (g, gen) in grid_data["gen"]
-        zone = gen["zone"]
-
-        # Check if generator type exists in input data
-        if haskey(gen, "type")
-            type = gen["type"]
-        else
-            print(g, "\n")
-        end
-
-        # Calculate zonal capacity: For LU there are three different zones coming from the TYNDP data
-        zonal_tyndp_capacity = 0
-        if haskey(zone_mapping, zone)
-            tyndp_zones = zone_mapping[zone]
-        else
-            tyndp_zones = Dict{String, Any}()
-        end
-        for tyndp_zone in tyndp_zones
-            # obtain 
-            zonal_capacity = get_generation_capacity(tyndp_capacity, scenario, type, climate_year, tyndp_zone, tyndp = tyndp)
-            if !isempty(zonal_capacity)
-                zonal_tyndp_capacity =  zonal_tyndp_capacity + zonal_capacity[1]
-            end
-        end
-
-        # If the zonal capacity is different than zero, scale "pmax" based on the ratios of the zonal capacities
-        if zonal_tyndp_capacity !=0
-            for (z, zone_) in grid_data["zonal_generation_capacity"]
-                if zone_["zone"] == zone
-                    scaling_factor = max(0.0, (zonal_tyndp_capacity / grid_data["baseMVA"] / zone_[type]) )
-                    if type == "onshore_wind"
-                        println(zone, scaling_factor)
-                    end
-                    if !exclude_offshore_wind
-                        if gen["type"] != "Offshore Wind"
-                            gen["pmax"] = gen["pmax"] * scaling_factor
-                        end
-                    else
-                        gen["pmax"] = gen["pmax"] * scaling_factor
-                    end
-                end
-            end
-        end
-
-        # Check if a different capacity should be written into the offshore wind generator NSEH
-        if !isnothing(ns_hub_cap)
-            if zone == "NSEH"
-                gen["pmax"] = ns_hub_cap
-            end
-        end
-    end 
-end
-
 # This function maps the zone names in the EU Grid model to the zone names of the TYNDP model
 function map_zones(;region_names = [])
     zone_mapping = Dict{String, Any}()
@@ -710,171 +649,109 @@ function add_offshore_hvdc_connections!(input_data)
 end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function scale_generation_updated!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping, gen_costs;
-                           ns_hub_cap = nothing, exclude_offshore_wind = false, zones_noscaling = String[])
-
-    baseMVA = grid_data["baseMVA"]
-
-    # collect zones present in the grid (from generators)
-    zones = unique([ gen["zone"] for (g, gen) in grid_data["gen"] if haskey(gen, "zone") ])
-
-    for zone in zones
-        println("Processing zone: ", zone)
-        # skip zones listed in zones_noscaling
-        if !isempty(zones_noscaling) && (zone in zones_noscaling)
-            @info "Skipping zone $(zone) because it is listed in zones_noscaling."
-            continue
-        end
-
-        # get the tyndp mapping zones for this grid zone (may be missing)
-        tyndp_zones = haskey(zone_mapping, zone) ? zone_mapping[zone] : String[]
-
-        # build set of technology types to consider:
-        #  - types already present in the grid for this zone
-        #  - types present in grid_data["zonal_generation_capacity"] for this zone (if available)
-        types_present = Set{String}()
-        # from existing gens
-        for (g, gen) in grid_data["gen"]
-            if haskey(gen, "zone") && gen["zone"] == zone
-                # prefer type_tyndp where present, else "type"
-                if haskey(gen, "type_tyndp")
-                    push!(types_present, string(gen["type_tyndp"]))
-                elseif haskey(gen, "type")
-                    push!(types_present, string(gen["type"]))
-                end
-            end
-        end
-        # from zonal_generation_capacity if available
-        if haskey(grid_data, "zonal_generation_capacity")
-            for (zid, zone_) in grid_data["zonal_generation_capacity"]
-                if haskey(zone_, "zone") && zone_["zone"] == zone
-                    for k in keys(zone_)
-                        if k != "zone"
-                            push!(types_present, string(k))
-                        end
-                    end
-                    break
-                end
-            end
-        end
-
-        # for each technology type, decide update/add/zero
-        for typ in collect(types_present)
-            # optionally skip offshore wind
-            if exclude_offshore_wind && typ == "Offshore Wind"
-                continue
-            end
-
-            # compute zonal capacity from TYNDP (MW)
-            zonal_tyndp_capacity_mw = 0.0
-            for tyndp_zone in tyndp_zones
-                cap_vec = get_generation_capacity_2024(tyndp_capacity, typ, tyndp_zone)
-                if !isempty(cap_vec)
-                    zonal_tyndp_capacity_mw += float(cap_vec[1])
-                end
-            end
-
-            # collect existing generators of this type in this zone
-            existing_gens = [(g, gen) for (g, gen) in grid_data["gen"] if (haskey(gen,"zone") && gen["zone"]==zone) &&
-                              ((haskey(gen,"type_tyndp") && string(gen["type_tyndp"])==typ) ||
-                               (haskey(gen,"type") && string(gen["type"])==typ)) ]
-
-            # sum existing capacity (convert p.u. to MW if needed)
-            # We assume gen["pmax"] uses the same units as earlier code expects.
-            #existing_total_pu = sum( (haskey(gen,"pmax") ? float(gen["pmax"]) : 0.0) for (_g, gen) in existing_gens )
-            existing_total_pu = sum((haskey(gen,"pmax") ? float(gen["pmax"]) : 0.0) for (_g, gen) in existing_gens; init = 0.0)
-            existing_total_mw = existing_total_pu * baseMVA   # keep same convention used elsewhere
-
-            # Case A: TYNDP capacity is zero -> set existing gens to zero
-            if isapprox(zonal_tyndp_capacity_mw, 0.0; atol=1e-12)
-                if existing_total_mw > 0.0
-                    @info "Setting to 0 MW all existing $(typ) generators in zone $(zone)"
-                    for (_g, gen) in existing_gens
-                        gen["pmax"] = 0.0
-                    end
-                end
-
-            # Case B: TYNDP capacity > 0
-            else
-                # if there are no existing gens -> add a new generator with the full capacity
-                if existing_total_mw <= 0.0
-                    # find a bus in the same zone to attach the new generator
-                    node_to_use = nothing
-                    node_to_use = select_bus_for_new_generator(grid_data, zone, typ)
-
-                    if isnothing(node_to_use)
-                        @warn "No bus found in zone $(zone) to attach new generator of type $(typ). Skipping addition."
-                    else
-                        add_cost = gen_costs[typ] #2000.0   # default marginal cost (choose sensible default)
-                        @info "Adding new generator in zone $(zone), type $(typ), capacity $(zonal_tyndp_capacity_mw) MW at bus $(node_to_use)"
-                        add_gen!(grid_data, zone, add_cost, node_to_use, zonal_tyndp_capacity_mw, typ)
-                    end
-
-                # if there are existing gens -> scale them proportionally
-                else
-                    scaling_factor = zonal_tyndp_capacity_mw / existing_total_mw
-                    @info "Scaling $(typ) in zone $(zone): existing $(existing_total_mw) MW -> target $(zonal_tyndp_capacity_mw) MW; factor=$(scaling_factor)"
-                    for (_g, gen) in existing_gens
-                        gen["pmax"] = float(gen["pmax"]) * scaling_factor
+function distribute_addition!(grid_data, gen_costs, zone_key::AbstractString, zone::AbstractString, typ::AbstractString, add_mw::Real; percentage_scale::Bool=false)
+    # determine share key based on technology family
+    ltyp = lowercase(typ)
+    is_offshore = occursin("offshore", ltyp)
+    is_solar   = occursin("solar", ltyp) || occursin("pv", ltyp)
+    is_onshore = (occursin("onshore", ltyp) || (occursin("wind", ltyp) && !is_offshore))
+    share_key = is_solar ? "solarshare" : (is_offshore ? "windoffshare" : (is_onshore ? "windshare" : nothing))
+ 
+    # helper to get bus node
+    get_node_from_bus = (bkey, bus) -> (haskey(bus, "bus_i") ? bus["bus_i"] : (try parse(Int, bkey) catch; nothing end))
+ 
+    # collect buses + shares
+    bus_alloc = Vector{Tuple{Any,Float64}}()
+    if percentage_scale && !isnothing(share_key)
+        for (bkey, bus) in grid_data["bus"]
+            if haskey(bus, zone_key) && bus[zone_key] == zone && haskey(bus, share_key)
+                sh = try float(bus[share_key]) catch; continue end
+                sh = (sh > 1.0) ? sh/100.0 : sh
+                if sh > 0.0
+                    node = get_node_from_bus(bkey, bus)
+                    if !isnothing(node)
+                        push!(bus_alloc, (node, sh))
                     end
                 end
             end
         end
     end
-
-    # Preserve previous behaviour: special NSEH hub override if requested
-    if !isnothing(ns_hub_cap)
-        for (g, gen) in grid_data["gen"]
-            if haskey(gen, "zone") && gen["zone"] == "NSEH"
-                gen["pmax"] = ns_hub_cap
+ 
+    bidding_zone = zone  # keep previous convention: bidding zone = zone (works for both modes)
+ 
+    # distribute if possible
+    if !isempty(bus_alloc)
+        total_sh = sum(x[2] for x in bus_alloc)
+        if total_sh > 0
+            for (node, sh) in [(x[1], x[2]/total_sh) for x in bus_alloc]
+                alloc = add_mw * sh
+                if alloc > 1e-6
+                    add_cost = isempty(gen_costs) ? nothing : (haskey(gen_costs, typ) ? gen_costs[typ] : first(values(gen_costs)))
+                    @info "Adding distributed $(typ) in $(zone_key)=$(zone) at bus $(node): $(alloc) MW (share=$(sh))"
+                    add_gen_regional!(grid_data, bidding_zone, zone, add_cost, node, alloc, typ)
+                end
             end
+            return true
         end
     end
-
-    return nothing
+ 
+    # fallback: single-bus add
+    node = select_bus_for_new_generator(grid_data, zone, typ)
+    if isnothing(node)
+        @warn "No bus found in $(zone_key)=$(zone) to attach new generator of type $(typ). Skipping addition of $(add_mw) MW."
+        return false
+    else
+        add_cost = isempty(gen_costs) ? nothing : (haskey(gen_costs, typ) ? gen_costs[typ] : first(values(gen_costs)))
+        @info "Adding fallback $(typ) in $(zone_key)=$(zone) at bus $(node): $(add_mw) MW"
+        add_gen_regional!(grid_data, bidding_zone, zone, add_cost, node, add_mw, typ)
+        return true
+    end
 end
-
-function scale_generation_updated_regions!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping, gen_costs;
-                           ns_hub_cap = nothing, exclude_offshore_wind = false, zones_noscaling = String[])
-
+ 
+function scale_generation!(tyndp_capacity, grid_data, tyndp_version, scenario, climate_year, zone_mapping;
+                           ns_hub_cap = nothing,
+                           exclude_offshore_wind::Bool = false,
+                           use_regions::Bool = false,
+                           add_generator::Bool = false,
+                           percentage_scale::Bool = false,
+                           gen_costs = Dict(),
+                           zones_noscaling = String[])
+ 
     baseMVA = grid_data["baseMVA"]
-
-    # collect zones present in the grid (from generators)
-    zones = unique([ gen["region"] for (g, gen) in grid_data["gen"] if haskey(gen, "region") ])
-
+    zone_key = use_regions ? "region" : "zone"
+ 
+    # list zones/regions from existing generators
+    zones = unique([ gen[zone_key] for (_g, gen) in grid_data["gen"] if haskey(gen, zone_key) ])
+ 
+    # helper to extract TYNDP capacity for (typ,tyndp_zone) and sum
+    sum_tyndp_for_zone = function(typ, tyndp_zones)
+        s = 0.0
+        for tz in tyndp_zones
+            if tyndp_version == "2024"
+                v = get_generation_capacity_2024(tyndp_capacity, typ, tz)
+            elseif tyndp_version == "2020"
+                v = get_generation_capacity_2020(tyndp_capacity, scenario, typ, climate_year, tz)
+            end
+            if !isempty(v)
+                s += float(v[1])
+            end
+        end
+        return s
+    end
+ 
     for zone in zones
-        println("Processing zone: ", zone)
-        # skip zones listed in zones_noscaling
+        println("Processing $(zone_key): ", zone)
         if !isempty(zones_noscaling) && (zone in zones_noscaling)
-            @info "Skipping zone $(zone) because it is listed in zones_noscaling."
+            @info "Skipping $(zone_key)=$(zone) (in zones_noscaling)."
             continue
         end
-
-        # get the tyndp mapping zones for this grid zone (may be missing)
+ 
         tyndp_zones = haskey(zone_mapping, zone) ? zone_mapping[zone] : String[]
-
-        # build set of technology types to consider:
-        #  - types already present in the grid for this zone
-        #  - types present in grid_data["zonal_generation_capacity"] for this zone (if available)
+ 
+        # build types set: from existing gens and from tyndp_capacity entries
         types_present = Set{String}()
-        # from existing gens
-        for (g, gen) in grid_data["gen"]
-            if haskey(gen, "region") && gen["region"] == zone
-                # prefer type_tyndp where present, else "type"
+        for (_g, gen) in grid_data["gen"]
+            if haskey(gen, zone_key) && gen[zone_key] == zone
                 if haskey(gen, "type_tyndp")
                     push!(types_present, string(gen["type_tyndp"]))
                 elseif haskey(gen, "type")
@@ -882,111 +759,74 @@ function scale_generation_updated_regions!(tyndp_capacity, grid_data, scenario, 
                 end
             end
         end
-        # from zonal_generation_capacity if available
-        if haskey(grid_data, "zonal_generation_capacity")
-            for (zid, zone_) in grid_data["zonal_generation_capacity"]
-                if haskey(zone_, "region") && zone_["region"] == zone
-                    for k in keys(zone_)
-                        if k != "zone"
-                            push!(types_present, string(k))
-                        end
-                    end
-                    break
-                end
-            end
-        end
-        
-        
-            # boolean mask: rows that correspond to this zone and refer to capacity
+ 
+        # include Generator_ID from tyndp_capacity when Node_Line == zone and Parameter == "Capacity"
         mask = (tyndp_capacity[!, :Node_Line] .== zone) .& (tyndp_capacity[!, :Parameter] .== "Capacity")
         if any(mask)
-            # iterate rows matching the zone & capacity parameter
             for row in eachrow(tyndp_capacity[mask, :])
-                # Generator_ID may be missing; guard against that
                 if !ismissing(row.Generator_ID) && row.Generator_ID !== nothing
-                    typname = strip(string(row.Generator_ID))
-                    if !(typname in types_present)
-                        push!(types_present, typname)
-                    end
+                    push!(types_present, strip(string(row.Generator_ID)))
                 end
             end
         end
-        
-
-        # for each technology type, decide update/add/zero
+ 
         for typ in collect(types_present)
-            # optionally skip offshore wind
-            if exclude_offshore_wind && typ == "Offshore Wind"
+            # optional offshore skip
+            if exclude_offshore_wind && occursin("offshore", lowercase(typ))
                 continue
             end
-
-            # compute zonal capacity from TYNDP (MW)
-            zonal_tyndp_capacity_mw = 0.0
-            for tyndp_zone in tyndp_zones
-                cap_vec = get_generation_capacity_2024(tyndp_capacity, typ, tyndp_zone)
-                if !isempty(cap_vec)
-                    zonal_tyndp_capacity_mw += float(cap_vec[1])
-                end
-            end
-
-            # collect existing generators of this type in this zone
-            existing_gens = [(g, gen) for (g, gen) in grid_data["gen"] if (haskey(gen,"region") && gen["region"]==zone) &&
-                              ((haskey(gen,"type_tyndp") && string(gen["type_tyndp"])==typ) ||
-                               (haskey(gen,"type") && string(gen["type"])==typ)) ]
-
-            # sum existing capacity (convert p.u. to MW if needed)
-            # We assume gen["pmax"] uses the same units as earlier code expects.
-            #existing_total_pu = sum( (haskey(gen,"pmax") ? float(gen["pmax"]) : 0.0) for (_g, gen) in existing_gens )
+ 
+            zonal_tyndp_capacity_mw = sum_tyndp_for_zone(typ, tyndp_zones)
+ 
+            # collect existing gens of this type in this zone
+            existing_gens = [(g, gen) for (g, gen) in grid_data["gen"]
+                              if haskey(gen, zone_key) && gen[zone_key] == zone &&
+                                 ((haskey(gen,"type_tyndp") && string(gen["type_tyndp"]) == typ) ||
+                                  (haskey(gen,"type") && string(gen["type"]) == typ)) ]
+ 
             existing_total_pu = sum((haskey(gen,"pmax") ? float(gen["pmax"]) : 0.0) for (_g, gen) in existing_gens; init = 0.0)
-            existing_total_mw = existing_total_pu * baseMVA   # keep same convention used elsewhere
-
-            # Case A: TYNDP capacity is zero -> set existing gens to zero
+            existing_total_mw = existing_total_pu * baseMVA
+ 
+            # if TYNDP target is zero -> set existing to zero (old behaviour)
             if isapprox(zonal_tyndp_capacity_mw, 0.0; atol=1e-12)
                 if existing_total_mw > 0.0
-                    @info "Setting to 0 MW all existing $(typ) generators in zone $(zone)"
+                    @info "Setting to 0 MW all existing $(typ) in $(zone_key)=$(zone)."
                     for (_g, gen) in existing_gens
                         gen["pmax"] = 0.0
                     end
                 end
-
-            # Case B: TYNDP capacity > 0
-            else
-                # if there are no existing gens -> add a new generator with the full capacity
-                if existing_total_mw <= 0.0
-                    # find a bus in the same zone to attach the new generator
-                    node_to_use = nothing
-                    node_to_use = select_bus_for_new_generator(grid_data, zone, typ)
-                    # for (bkey, bus) in grid_data["bus"]
-                    #     if haskey(bus, "zone") && bus["zone"] == zone
-                    #         # prefer bus with bus_type==2 if available
-                    #         if haskey(bus, "bus_i")
-                    #             node_to_use = bus["bus_i"]
-                    #             break
-                    #         else
-                    #             # fallback to key as integer if it parses
-                    #             try
-                    #                 node_to_use = parse(Int, bkey)
-                    #                 break
-                    #             catch
-                    #                 continue
-                    #             end
-                    #         end
-                    #     end
-                    # end
-
-                    if isnothing(node_to_use)
-                        @warn "No bus found in zone $(zone) to attach new generator of type $(typ). Skipping addition."
-                    else
-                        add_cost = gen_costs[typ] #2000.0   # default marginal cost (choose sensible default)
-                        @info "Adding new generator in zone $(zone), type $(typ), capacity $(zonal_tyndp_capacity_mw) MW at bus $(node_to_use)"
-                        bidding_zone = zone
-                        add_gen_regional!(grid_data, bidding_zone,zone, add_cost, node_to_use, zonal_tyndp_capacity_mw, typ)
-                    end
-
-                # if there are existing gens -> scale them proportionally
+                continue
+            end
+ 
+            # no existing gens
+            if existing_total_mw <= 0.0
+                if add_generator
+                    @info "Adding full target $(zonal_tyndp_capacity_mw) MW for $(typ) in $(zone_key)=$(zone) (no existing)."
+                    distribute_addition!(grid_data, gen_costs, zone_key, zone, typ, zonal_tyndp_capacity_mw; percentage_scale=percentage_scale)
                 else
+                    @info "No existing $(typ) in $(zone_key)=$(zone) and add_generator=false -> skipping."
+                end
+                continue
+            end
+ 
+            # existing > 0: decide scale vs add shortfall depending on add_generator
+            if zonal_tyndp_capacity_mw <= existing_total_mw + 1e-8
+                # scale proportionally down (or up if slightly higher)
+                scaling_factor = zonal_tyndp_capacity_mw / existing_total_mw
+                @info "Scaling $(typ) in $(zone_key)=$(zone): $(existing_total_mw) -> $(zonal_tyndp_capacity_mw) MW; factor=$(scaling_factor)"
+                for (_g, gen) in existing_gens
+                    gen["pmax"] = float(gen["pmax"]) * scaling_factor
+                end
+            else
+                # target > existing
+                add_mw = zonal_tyndp_capacity_mw - existing_total_mw
+                if add_generator
+                    @info "Adding shortfall $(add_mw) MW for $(typ) in $(zone_key)=$(zone) (add_generator=true)."
+                    distribute_addition!(grid_data, gen_costs, zone_key, zone, typ, add_mw; percentage_scale=percentage_scale)
+                else
+                    # old behaviour: scale up existing to meet target
                     scaling_factor = zonal_tyndp_capacity_mw / existing_total_mw
-                    @info "Scaling $(typ) in zone $(zone): existing $(existing_total_mw) MW -> target $(zonal_tyndp_capacity_mw) MW; factor=$(scaling_factor)"
+                    @info "Scaling up $(typ) in $(zone_key)=$(zone) (add_generator=false): factor=$(scaling_factor)"
                     for (_g, gen) in existing_gens
                         gen["pmax"] = float(gen["pmax"]) * scaling_factor
                     end
@@ -994,32 +834,24 @@ function scale_generation_updated_regions!(tyndp_capacity, grid_data, scenario, 
             end
         end
     end
-    #bd_zones = unique([ gen["zone"] for (g, gen) in grid_data["gen"] if haskey(gen, "zone") ])
-    #add_borders!(grid_data, grid_data, bd_zones; border_slack = 0.01)
-
-
-
-
-
-
-    # Preserve previous behaviour: special NSEH hub override if requested
+ 
+    # NSEH override (preserve previous behaviour)
     if !isnothing(ns_hub_cap)
-        for (g, gen) in grid_data["gen"]
+        for (_g, gen) in grid_data["gen"]
             if haskey(gen, "zone") && gen["zone"] == "NSEH"
                 gen["pmax"] = ns_hub_cap
             end
         end
     end
-
+ 
     return nothing
 end
-
-
+ 
 """
 select_bus_for_new_generator(grid_data, zone, gen_type)
-
+ 
 Select a bus index (Int) inside `zone` according to these rules:
-
+ 
 - If gen_type is in the built-in special_types list:
     1) If an existing generator of that type exists in the same zone,
        return the bus of the first such generator found.
@@ -1028,13 +860,13 @@ Select a bus index (Int) inside `zone` according to these rules:
     3) Else return the first bus found in the zone.
 - If gen_type is not in special_types:
     - Return the first bus found in the zone.
-
+ 
 Errors if no bus found in the zone.
 """
 function select_bus_for_new_generator(grid_data::Dict{String,Any},
                                       zone::AbstractString,
                                       gen_type::AbstractString)
-
+ 
     # Hard-coded special types list (your provided list)
     special_types = [
         "Gas CCGT new", "Gas CCGT CCS", "Gas CCGT old 1", "Gas CCGT old 2", "Gas CCGT present 1", "Gas CCGT present 2",
@@ -1046,7 +878,7 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
         "Nuclear", "Light oil", "Oil shale new", "P2G",
         "Gas CCGT new CCS", "Gas CCGT present 1 CCS", "Gas CCGT present 2 CCS"
     ]
-
+ 
     # helper to try converting various bus id representations to Int
     to_int(x) = begin
         if x === nothing
@@ -1064,7 +896,7 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
             return nothing
         end
     end
-
+ 
     # Return list of integer bus indices in the zone (preserve the order found)
     function buses_in_zone(zone::AbstractString)
         res = Int[]
@@ -1073,13 +905,7 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
         end
         for (bk, bdict) in grid_data["bus"]
             # some bus dictionaries may store zone under "zone"
-            if haskey(bdict, "region")
-                bus_zone = get(bdict, "region", nothing)
-            elseif haskey(bdict, "zone")
-                bus_zone = get(bdict, "zone", nothing)
-            end
-                # others may store it under "region"
-
+            bus_zone = get(bdict, "region", nothing)
             if bus_zone == zone
                 # prefer explicit bus_i field, else convert the dictionary key
                 ib = nothing
@@ -1095,7 +921,7 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
         end
         return res
     end
-
+ 
     # 1) If generator type is special, try to reuse an existing gen bus of same type in the same zone
     if gen_type in special_types && haskey(grid_data, "gen")
         for (gk, gdict) in grid_data["gen"]
@@ -1122,7 +948,7 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
                 end
             end
         end
-
+ 
         # 1.b) no existing generator of that type in zone -> choose bus with highest summed load
         demand_by_bus = Dict{Int,Float64}()
         if haskey(grid_data, "load")
@@ -1152,7 +978,7 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
                 demand_by_bus[ib] = get(demand_by_bus, ib, 0.0) + val
             end
         end
-
+ 
         # find bus in zone with highest demand
         best_bus = nothing
         best_demand = -Inf
@@ -1174,7 +1000,7 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
         if !isnothing(best_bus)
             return best_bus
         end
-
+ 
         # fallback: first bus in zone
         zone_buses = buses_in_zone(zone)
         if !isempty(zone_buses)
@@ -1187,258 +1013,8 @@ function select_bus_for_new_generator(grid_data::Dict{String,Any},
             return zone_buses[1]
         end
     end
-
-    #error("No suitable bus found in zone: $zone")
+ 
+    error("No suitable bus found in zone: $zone")
 end
 
 
-
-
-function scale_generation_updated_regions_renshare!(tyndp_capacity, grid_data, scenario, climate_year, zone_mapping, gen_costs;
-                           ns_hub_cap = nothing, exclude_offshore_wind = false, zones_noscaling = String[])
-
-    baseMVA = grid_data["baseMVA"]
-
-    # collect zones present in the grid (from generators)
-    zones = []
-    for (g, gen) in grid_data["gen"]
-        if haskey(gen, "region") 
-            push!(zones, gen["region"])
-        else
-             push!(zones, gen["zone"])
-        end
-    end
-
-    zones = unique(zones)
-
-    for zone in zones
-        println("Processing zone: ", zone)
-        # skip zones listed in zones_noscaling
-        if !isempty(zones_noscaling) && (zone in zones_noscaling)
-            @info "Skipping zone $(zone) because it is listed in zones_noscaling."
-            continue
-        end
-
-        # get the tyndp mapping zones for this grid zone (may be missing)
-        tyndp_zones = haskey(zone_mapping, zone) ? zone_mapping[zone] : String[]
-
-        # build set of technology types to consider:
-        #  - types already present in the grid for this zone
-        #  - types present in grid_data["zonal_generation_capacity"] for this zone (if available)
-        types_present = Set{String}()
-        # from existing gens
-        for (g, gen) in grid_data["gen"]
-            if (haskey(gen, "region") && gen["region"] == zone) || (haskey(gen, "zone") && gen["zone"] == zone)
-                # prefer type_tyndp where present, else "type"
-                if haskey(gen, "type_tyndp")
-                    push!(types_present, string(gen["type_tyndp"]))
-                elseif haskey(gen, "type")
-                    push!(types_present, string(gen["type"]))
-                end
-            end
-        end
-        # from zonal_generation_capacity if available
-        if haskey(grid_data, "zonal_generation_capacity")
-            for (zid, zone_) in grid_data["zonal_generation_capacity"]
-                if haskey(zone_, "region") && zone_["region"] == zone
-                    for k in keys(zone_)
-                        if k != "zone"
-                            push!(types_present, string(k))
-                        end
-                    end
-                    break
-                end
-            end
-        end
-
-
-        # boolean mask: rows that correspond to this zone and refer to capacity
-        mask = (tyndp_capacity[!, :Node_Line] .== zone) .& (tyndp_capacity[!, :Parameter] .== "Capacity")
-        if any(mask)
-            # iterate rows matching the zone & capacity parameter
-            for row in eachrow(tyndp_capacity[mask, :])
-                # Generator_ID may be missing; guard against that
-                if !ismissing(row.Generator_ID) && row.Generator_ID !== nothing
-                    typname = strip(string(row.Generator_ID))
-                    if !(typname in types_present)
-                        push!(types_present, typname)
-                    end
-                end
-            end
-        end
-
-
-        # helper to get node index from a bus entry
-        get_node_from_bus = function(bkey, bus)
-            if haskey(bus, "bus_i")
-                return bus["bus_i"]
-            else
-                try
-                    return parse(Int, bkey)
-                catch
-                    return nothing
-                end
-            end
-        end
-
-        # for each technology type, decide update/add/zero
-        for typ in collect(types_present)
-            # optionally skip offshore wind (preserve previous flag behaviour)
-            if exclude_offshore_wind && occursin("offshore", lowercase(typ))
-                continue
-            end
-
-            # compute zonal capacity from TYNDP (MW)
-            zonal_tyndp_capacity_mw = 0.0
-            for tyndp_zone in tyndp_zones
-                cap_vec = get_generation_capacity_2024(tyndp_capacity, typ, tyndp_zone)
-                if !isempty(cap_vec)
-                    zonal_tyndp_capacity_mw += float(cap_vec[1])
-                end
-            end
-
-            # collect existing generators of this type in this zone
-            existing_gens = [(g, gen) for (g, gen) in grid_data["gen"] if (haskey(gen,"region") && gen["region"]==zone) &&
-                              ((haskey(gen,"type_tyndp") && string(gen["type_tyndp"])==typ) ||
-                               (haskey(gen,"type") && string(gen["type"])==typ)) ]
-
-            # sum existing capacity (convert p.u. to MW if needed)
-            existing_total_pu = sum((haskey(gen,"pmax") ? float(gen["pmax"]) : 0.0) for (_g, gen) in existing_gens; init = 0.0)
-            existing_total_mw = existing_total_pu * baseMVA   # keep same convention used elsewhere
-
-            # detect technology family: solar, onshore, offshore (case-insensitive)
-            ltyp = lowercase(typ)
-            is_offshore = occursin("offshore", ltyp)
-            is_solar = occursin("solar", ltyp) || occursin("pv", ltyp)
-            # onshore: contains "onshore" OR contains "wind" but not "offshore"
-            is_onshore = (occursin("onshore", ltyp) || (occursin("wind", ltyp) && !is_offshore))
-
-            special_renewable = is_solar || is_onshore || is_offshore
-
-            # Case A: TYNDP capacity is zero -> set existing gens to zero (unchanged behaviour)
-            if isapprox(zonal_tyndp_capacity_mw, 0.0; atol=1e-12)
-                if existing_total_mw > 0.0
-                    @info "Setting to 0 MW all existing $(typ) generators in zone $(zone)"
-                    for (_g, gen) in existing_gens
-                        gen["pmax"] = 0.0
-                    end
-                end
-
-            # Case B: TYNDP capacity > 0
-            else
-
-                # --- SPECIAL RENEWABLES (solar / onshore /offshore) ---
-                if special_renewable
-                    # compute how much additional capacity is needed beyond existing
-                    add_mw = zonal_tyndp_capacity_mw - existing_total_mw
-
-                    if add_mw <= 1e-4
-                        @info "No additional $(typ) needed in zone $(zone): existing $(existing_total_mw) MW meets target $(zonal_tyndp_capacity_mw) MW"
-                        # do NOT scale existing gens; nothing to add
-                        continue
-                    end
-
-                    # determine share key
-                    share_key = nothing
-                    if is_solar
-                        share_key = "solarshare"
-                    elseif is_offshore
-                        share_key = "windoffshare"
-                    elseif is_onshore
-                        share_key = "windshare"
-                    end
-
-                    # collect buses in the zone and their shares
-                    bus_allocations = []  # tuples (node, share)
-                    for (bkey, bus) in grid_data["bus"]
-                        if haskey(bus, "region") && bus["region"] == zone
-                            if !isnothing(share_key) && haskey(bus, share_key)
-                                share_val = try
-                                    float(bus[share_key])
-                                catch
-                                    continue
-                                end
-                                if share_val > 1.0
-                                    share_val = share_val / 100.0
-                                end
-                                if share_val > 0.0
-                                    node = get_node_from_bus(bkey, bus)
-                                    if !isnothing(node)
-                                        push!(bus_allocations, (node, share_val))
-                                    end
-                                end
-                            end
-                        end
-                    end
-
-                    if !isempty(bus_allocations)
-                        # normalize shares so they sum to 1.0
-                        total_share = sum(x[2] for x in bus_allocations)
-                        if total_share > 0
-                            normed = [(x[1], x[2]/total_share) for x in bus_allocations]
-                            # add a generator per bus according to normalized shares using add_mw (only the shortfall)
-                            for (node, nsh) in normed
-                                allocated_mw = add_mw * nsh
-                                if allocated_mw > 1e-6
-                                    add_cost = haskey(gen_costs, typ) ? gen_costs[typ] : first(values(gen_costs))
-                                    @info "Adding distributed $(typ) generator in zone $(zone) at bus $(node): capacity $(allocated_mw) MW (share=$(nsh))"
-                                    bidding_zone = zone
-                                    add_gen_regional!(grid_data, bidding_zone, zone, add_cost, node, allocated_mw, typ)
-                                end
-                            end
-                            # done with this typ
-                            continue
-                        end
-                    end
-
-                    # if we reach here, no bus shares were found — fallback to previous single-bus addition
-                    @warn "No bus shares ($(share_key)) found in zone $(zone) for type $(typ). Falling back to single-bus add of $(add_mw) MW."
-
-                    node_to_use = select_bus_for_new_generator(grid_data, zone, typ)
-                    if isnothing(node_to_use)
-                        @warn "No bus found in zone $(zone) to attach new generator of type $(typ). Skipping addition."
-                    else
-                        add_cost = haskey(gen_costs, typ) ? gen_costs[typ] : first(values(gen_costs))
-                        @info "Adding fallback generator in zone $(zone), type $(typ), capacity $(add_mw) MW at bus $(node_to_use)"
-                        bidding_zone = zone
-                        add_gen_regional!(grid_data, bidding_zone,zone, add_cost, node_to_use, add_mw, typ)
-                    end
-
-                # --- NON-SPECIAL TECHNOLOGIES: preserve previous scaling behaviour ---
-                else
-                    # if there are no existing gens -> add a new generator with the full capacity
-                    if existing_total_mw <= 0.0
-                        node_to_use = select_bus_for_new_generator(grid_data, zone, typ)
-                        if isnothing(node_to_use)
-                            @warn "No bus found in zone $(zone) to attach new generator of type $(typ). Skipping addition."
-                        else
-                            add_cost = haskey(gen_costs, typ) ? gen_costs[typ] : first(values(gen_costs))
-                            @info "Adding new generator in zone $(zone), type $(typ), capacity $(zonal_tyndp_capacity_mw) MW at bus $(node_to_use)"
-                            bidding_zone = zone
-                            add_gen_regional!(grid_data, bidding_zone,zone, add_cost, node_to_use, zonal_tyndp_capacity_mw, typ)
-                        end
-
-                    # if there are existing gens -> scale them proportionally
-                    else
-                        scaling_factor = zonal_tyndp_capacity_mw / existing_total_mw
-                        @info "Scaling $(typ) in zone $(zone): existing $(existing_total_mw) MW -> target $(zonal_tyndp_capacity_mw) MW; factor=$(scaling_factor)"
-                        for (_g, gen) in existing_gens
-                            gen["pmax"] = float(gen["pmax"]) * scaling_factor
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    # Preserve previous behaviour: special NSEH hub override if requested
-    if !isnothing(ns_hub_cap)
-        for (g, gen) in grid_data["gen"]
-            if haskey(gen, "zone") && gen["zone"] == "NSEH"
-                gen["pmax"] = ns_hub_cap
-            end
-        end
-    end
-
-    return nothing
-end

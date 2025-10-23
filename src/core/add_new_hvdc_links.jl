@@ -50,21 +50,6 @@ function add_hvdc_links(grid_data, links)
     return grid_data_inv
 end
 
-function find_closest_bus(grid_data, lat, lon)
-    bus_lat_lon = zeros(length(grid_data["bus"]), 3)
-    idx = 1
-    for (b, bus) in grid_data["bus"]
-        bus_lat_lon[idx, :] = [parse(Int, b), bus["lat"], bus["lon"]]
-        idx = idx + 1
-    end
-
-    dist = (abs.(bus_lat_lon[:, 2] .- lat)).^2 .+ (abs.(bus_lat_lon[:, 3] .- lon)).^2
-    mindist = findmin(dist)
-    bus_idx = Int(bus_lat_lon[mindist[2], 1])
-
-    return bus_idx
-end
-
 function add_dc_bus!(grid_data, dc_voltage; dc_bus_id = nothing, lat = 0, lon = 0)
     if isnothing(dc_bus_id)
         dc_bus_idx = maximum([bus["index"] for (b, bus) in grid_data["busdc"]]) + 1
