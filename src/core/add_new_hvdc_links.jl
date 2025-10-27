@@ -192,36 +192,36 @@ function add_converter!(grid_data, ac_bus_idx, dc_bus_idx, power_rating; zone = 
     return grid_data
 end
 
-function add_generator!(grid_data, ac_bus_idx, gen_bus, power_rating, gen_cost, gen_zone; gen_id = nothing, status = 1) # To be done later
-    if isnothing(gen_id)
-        gen_idx = maximum([gen["index"] for (g, gen) in grid_data["gen"]]) + 1
-    else
-        gen_idx = gen_id
-    end
-    grid_data["gen"]["$gen_idx"] = Dict{String, Any}()  # create dictionary for each converter
-    grid_data["gen"]["$gen_idx"]["zone"] = gen_zone  
-    grid_data["gen"]["$gen_idx"]["type_tyndp"] = "Offshore Wind"  
-    grid_data["gen"]["$gen_idx"]["model"] = 2  
-    grid_data["gen"]["$gen_idx"]["gen_bus"] = gen_bus
-    grid_data["gen"]["$gen_idx"]["pmax"] = power_rating 
-    grid_data["gen"]["$gen_idx"]["country"] = 4
-    grid_data["gen"]["$gen_idx"]["vg"] = 1.0
-    grid_data["gen"]["$gen_idx"]["source_id"] = []
-    push!(grid_data["gen"]["$gen_idx"]["source_id"],"gen")
-    push!(grid_data["gen"]["$gen_idx"]["source_id"],gen_idx)
-    grid_data["gen"]["$gen_idx"]["index"] = gen_idx
-    grid_data["gen"]["$gen_idx"]["cost"] = []
-    push!(grid_data["gen"]["$gen_idx"]["cost"],gen_cost)
-    push!(grid_data["gen"]["$gen_idx"]["cost"],0.0)
-    grid_data["gen"]["$gen_idx"]["qmax"] = 6.0 
-    grid_data["gen"]["$gen_idx"]["gen_status"] = 1
-    grid_data["gen"]["$gen_idx"]["qmin"] = - 6.0 
-    grid_data["gen"]["$gen_idx"]["type"] = "Offshore"  
-    grid_data["gen"]["$gen_idx"]["pmin"] = 0.0 
-    grid_data["gen"]["$gen_idx"]["ncost"] = 2 
+# function add_generator!(grid_data, ac_bus_idx, gen_bus, power_rating, gen_cost, gen_zone; gen_id = nothing, status = 1) # To be done later
+#     if isnothing(gen_id)
+#         gen_idx = maximum([gen["index"] for (g, gen) in grid_data["gen"]]) + 1
+#     else
+#         gen_idx = gen_id
+#     end
+#     grid_data["gen"]["$gen_idx"] = Dict{String, Any}()  # create dictionary for each converter
+#     grid_data["gen"]["$gen_idx"]["zone"] = gen_zone  
+#     grid_data["gen"]["$gen_idx"]["type_tyndp"] = "Offshore Wind"  
+#     grid_data["gen"]["$gen_idx"]["model"] = 2  
+#     grid_data["gen"]["$gen_idx"]["gen_bus"] = gen_bus
+#     grid_data["gen"]["$gen_idx"]["pmax"] = power_rating 
+#     grid_data["gen"]["$gen_idx"]["country"] = 4
+#     grid_data["gen"]["$gen_idx"]["vg"] = 1.0
+#     grid_data["gen"]["$gen_idx"]["source_id"] = []
+#     push!(grid_data["gen"]["$gen_idx"]["source_id"],"gen")
+#     push!(grid_data["gen"]["$gen_idx"]["source_id"],gen_idx)
+#     grid_data["gen"]["$gen_idx"]["index"] = gen_idx
+#     grid_data["gen"]["$gen_idx"]["cost"] = []
+#     push!(grid_data["gen"]["$gen_idx"]["cost"],gen_cost)
+#     push!(grid_data["gen"]["$gen_idx"]["cost"],0.0)
+#     grid_data["gen"]["$gen_idx"]["qmax"] = 6.0 
+#     grid_data["gen"]["$gen_idx"]["gen_status"] = 1
+#     grid_data["gen"]["$gen_idx"]["qmin"] = - 6.0 
+#     grid_data["gen"]["$gen_idx"]["type"] = "Offshore"  
+#     grid_data["gen"]["$gen_idx"]["pmin"] = 0.0 
+#     grid_data["gen"]["$gen_idx"]["ncost"] = 2 
     
-    return grid_data
-end
+#     return grid_data
+# end
 
 function add_dc_branch!(grid_data, fbus_dc, tbus_dc, power_rating; status = 1, r = 0.006, branch_id = nothing)
     if isnothing(branch_id)
