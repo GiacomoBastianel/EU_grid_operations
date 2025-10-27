@@ -162,10 +162,14 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
                 ratio = ratio / 2
             end
             load["pd"] =  timeseries_data["demand"][zone][hour] * grid_data_orig["load"][l]["pd"] * ratio
-        end
+        end 
     end
     for (g, gen) in grid_data["gen"]
-        zone = gen["zone"]
+        if haskey(gen, "country")
+            zone = gen["country"]
+        else
+            zone = gen["zone"]
+        end
         if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
             gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
             gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
@@ -215,7 +219,11 @@ function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_
                 end
             end
             for (g, gen) in network["gen"]
-                zone = gen["zone"]
+                if haskey(gen, "country")
+                    zone = gen["country"]
+                else
+                    zone = gen["zone"]
+                end
                 if gen["type_tyndp"] == "Onshore Wind" && haskey(timeseries_data["wind_onshore"], zone)
                     gen["pg"] =  timeseries_data["wind_onshore"][zone][hour] * grid_data_orig["gen"][g]["pmax"] 
                     gen["pmax"] =  timeseries_data["wind_onshore"][zone][hour]* grid_data_orig["gen"][g]["pmax"]
