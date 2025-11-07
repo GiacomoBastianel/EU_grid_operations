@@ -165,8 +165,8 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         end 
     end
     for (g, gen) in grid_data["gen"]
-        if haskey(gen, "country")
-            zone = gen["country"]
+        if haskey(gen, "country_name")
+            zone = gen["country_name"]
         else
             zone = gen["zone"]
         end
