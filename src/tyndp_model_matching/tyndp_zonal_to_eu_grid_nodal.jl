@@ -165,8 +165,10 @@ function hourly_grid_data!(grid_data, grid_data_orig, hour, timeseries_data)
         end 
     end
     for (g, gen) in grid_data["gen"]
-        if haskey(gen, "country_name")
+        if haskey(gen, "country_name") && typeof(gen["country_name"]) == String
             zone = gen["country_name"]
+        elseif haskey(gen, "country") && typeof(gen["country"]) == String
+            zone = gen["country"]
         else
             zone = gen["zone"]
         end
@@ -219,7 +221,9 @@ function multiperiod_grid_data(grid_data_orig, hour_start, hour_end, timeseries_
                 end
             end
             for (g, gen) in network["gen"]
-                if haskey(gen, "country")
+                if haskey(gen, "country_name") && typeof(gen["country_name"]) == String
+                    zone = gen["country_name"]
+                elseif haskey(gen, "country") && typeof(gen["country"]) == String
                     zone = gen["country"]
                 else
                     zone = gen["zone"]
