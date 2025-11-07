@@ -96,94 +96,100 @@ batch_size = 8760
 _EUGO.batch_opf(hour_start_idx, hour_end_idx, zone_grid, timeseries_data, gurobi, s, batch_size, output_file_name)
 
 
-zone_grid_hourly = deepcopy(zone_grid)
-_EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, 5422, timeseries_data) # write hourly values into the grid data
 
 
-    br_x = 0.0009999
-    br_x1 = 0.001
-    zone_grid_hourly["branch"]["7308"]["br_x"] = br_x
-    zone_grid_hourly["branch"]["7310"]["br_x"] = br_x
-    zone_grid_hourly["branch"]["7319"]["br_x"] = br_x
-    zone_grid_hourly["branch"]["7316"]["br_x"] = br_x
 
 
-      zone_grid_hourly["branch"]["234"]["br_x"] = br_x1
-        zone_grid_hourly["branch"]["237"]["br_x"] = br_x1
-        zone_grid_hourly["branch"]["214"]["br_x"] = br_x1
-        zone_grid_hourly["branch"]["219"]["br_x"] = br_x1
 
-            for (g, gen) in zone_grid_hourly["gen"]
-        if gen["type_tyndp"] == "XB_dummy"
-            gen["pmax"] = gen["pmax"] * 5
-            gen["pmin"] = gen["pmin"] * 5
-        end  
-    end
-
-    for (bo, border) in zone_grid_hourly["borders"]
-        if  bo == "3"
-        border["slack"] = 0.06
-        else
-            border["slack"] = 0.01
-        end
-    end
+### Some pieces of code for testing single hours below - commented out
+# zone_grid_hourly = deepcopy(zone_grid)
+# _EUGO.hourly_grid_data!(zone_grid_hourly, zone_grid, 5422, timeseries_data) # write hourly values into the grid data
 
 
-    result_h = _PMACDC.solve_acdcopf(zone_grid_hourly, _PM.DCPPowerModel, gurobi; setting = s) # solve the OPF 
+#     br_x = 0.0009999
+#     br_x1 = 0.001
+#     zone_grid_hourly["branch"]["7308"]["br_x"] = br_x
+#     zone_grid_hourly["branch"]["7310"]["br_x"] = br_x
+#     zone_grid_hourly["branch"]["7319"]["br_x"] = br_x
+#     zone_grid_hourly["branch"]["7316"]["br_x"] = br_x
 
-    result_h = _PMACDC.solve_acdcopf(zone_grid_hourly, _PM.DCPPowerModel, highs; setting = s)
+
+#       zone_grid_hourly["branch"]["234"]["br_x"] = br_x1
+#         zone_grid_hourly["branch"]["237"]["br_x"] = br_x1
+#         zone_grid_hourly["branch"]["214"]["br_x"] = br_x1
+#         zone_grid_hourly["branch"]["219"]["br_x"] = br_x1
+
+#             for (g, gen) in zone_grid_hourly["gen"]
+#         if gen["type_tyndp"] == "XB_dummy"
+#             gen["pmax"] = gen["pmax"] * 5
+#             gen["pmin"] = gen["pmin"] * 5
+#         end  
+#     end
+
+#     for (bo, border) in zone_grid_hourly["borders"]
+#         if  bo == "3"
+#         border["slack"] = 0.06
+#         else
+#             border["slack"] = 0.01
+#         end
+#     end
+
+
+#     result_h = _PMACDC.solve_acdcopf(zone_grid_hourly, _PM.DCPPowerModel, gurobi; setting = s) # solve the OPF 
+
+#     result_h = _PMACDC.solve_acdcopf(zone_grid_hourly, _PM.DCPPowerModel, highs; setting = s)
 
     
 
 
 
-    filename =  joinpath("results/belgium_GA_2008_opf_1_to_8760.json")
-    result = Dict{String, Any}()
-    open(filename) do f
-    dicttxt = read(f,String)  # file information to string
-        global result = JSON.parse(dicttxt)  # parse and transform data
-    end
+#     filename =  joinpath("results/belgium_GA_2008_opf_1_to_8760.json")
+#     result = Dict{String, Any}()
+#     open(filename) do f
+#     dicttxt = read(f,String)  # file information to string
+#         global result = JSON.parse(dicttxt)  # parse and transform data
+#     end
 
-    idx = 0
-    for (h, hour) in result
-        if hour["termination_status"] == "INFEASIBLE"
-            idx = idx + 1
+#     idx = 0
+#     for (h, hour) in result
+#         if hour["termination_status"] == "INFEASIBLE"
+#             idx = idx + 1
 
-        end
-    end
+#         end
+#     end
 
-    println(idx)
+#     println(idx)
 
-    genmax = sum(gen["pmax"] for (g, gen) in zone_grid_hourly["gen"] if gen["type_tyndp"] ≠ "XB_dummy") * 100
-    genmin = sum(gen["pmin"] for (g, gen) in zone_grid_hourly["gen"] if gen["type_tyndp"] ≠ "XB_dummy") * 100
-    totaldemand = sum(load["pd"] for (l, load) in zone_grid_hourly["load"]) * 100
-    genr = sum(gen["pg"] for (g, gen) in result_h["solution"]["gen"]) * 100 - sum(gen["ps"] for (g, gen) in result_h["solution"]["storage"]) * 100
-    loadr = sum(load["pflex"] for (l, load) in result_h["solution"]["load"]) * 100
-    loadcr = sum(load["pcurt"] for (l, load) in result_h["solution"]["load"]) * 100
-    loadrr = sum(load["pred"] for (l, load) in result_h["solution"]["load"]) * 100
-    for (g, gen) in zone_grid_hourly["gen"]
-        if gen["pmin"] > 0
-        println(g)
-        end
-        if gen["type_tyndp"] == "XB_dummy"
-            println(g, " ",gen["pmax"], " ", gen["pmin"], " ", gen["gen_bus"])
-        end 
-        if gen["gen_bus"] ==  "4912"
-            println(g, " ",gen["pmax"], " ", gen["pmin"], " ", gen["type_tyndp"])
-        end
-    end
+#     genmax = sum(gen["pmax"] for (g, gen) in zone_grid_hourly["gen"] if gen["type_tyndp"] ≠ "XB_dummy") * 100
+#     genmin = sum(gen["pmin"] for (g, gen) in zone_grid_hourly["gen"] if gen["type_tyndp"] ≠ "XB_dummy") * 100
+#     totaldemand = sum(load["pd"] for (l, load) in zone_grid_hourly["load"]) * 100
+#     genr = sum(gen["pg"] for (g, gen) in result_h["solution"]["gen"]) * 100 - sum(gen["ps"] for (g, gen) in result_h["solution"]["storage"]) * 100
+#     loadr = sum(load["pflex"] for (l, load) in result_h["solution"]["load"]) * 100
+#     loadcr = sum(load["pcurt"] for (l, load) in result_h["solution"]["load"]) * 100
+#     loadrr = sum(load["pred"] for (l, load) in result_h["solution"]["load"]) * 100
+#     for (g, gen) in zone_grid_hourly["gen"]
+#         if gen["pmin"] > 0
+#         println(g)
+#         end
+#         if gen["type_tyndp"] == "XB_dummy"
+#             println(g, " ",gen["pmax"], " ", gen["pmin"], " ", gen["gen_bus"])
+#         end 
+#         if gen["gen_bus"] ==  "4912"
+#             println(g, " ",gen["pmax"], " ", gen["pmin"], " ", gen["type_tyndp"])
+#         end
+#     end
 
-    for (br, branch) in result_h["solution"]["branch"]
-        if abs(branch["pf"]/zone_grid_hourly["branch"][br]["rate_a"]*100) > 80
-        println(br, " ", branch["pf"], " ", branch["pf"]/zone_grid_hourly["branch"][br]["rate_a"]*100)
-        end
-    end
+#     for (br, branch) in result_h["solution"]["branch"]
+#         if abs(branch["pf"]/zone_grid_hourly["branch"][br]["rate_a"]*100) > 80
+#         println(br, " ", branch["pf"], " ", branch["pf"]/zone_grid_hourly["branch"][br]["rate_a"]*100)
+#         end
+#     end
 
-    for (br, branch) in zone_grid_hourly["branch"]
-        if branch["f_bus"] == 5979 || branch["t_bus"] == 5979
-            println(br)
-        end
-    end
+#     for (br, branch) in zone_grid_hourly["branch"]
+#         if branch["f_bus"] == 5979 || branch["t_bus"] == 5979
+#             println(br)
+#         end
+#     end
 
 
 
